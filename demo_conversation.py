@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Demo conversation dengan context untuk menunjukkan
-conversation logic yang lebih natural seperti n8n workflow
+Demo conversation with context to demonstrate
+natural conversation logic like n8n workflow
 """
 
 import os

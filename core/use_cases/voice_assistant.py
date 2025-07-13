@@ -1,6 +1,6 @@
 """
 Voice Assistant Use Case
-Orchestrates voice interactions dengan conversation context
+Orchestrates voice interactions with conversation context
 """
 
 from core.interfaces.ai_service import AIService
@@ -17,7 +17,7 @@ class VoiceAssistant:
 
     def single_voice_interaction(self):
         """Single voice recording and response"""
-        print("\n🎤 Single Voice Interaction")
+        print("\n Single Voice Interaction")
         print("-" * 30)
         
         # Get voice input
@@ -87,7 +87,7 @@ class VoiceAssistant:
                     print("Tidak ada input. Coba lagi...")
                     continue
                 
-                print(f"👤 Anda: {user_input}")
+                print(f"Anda: {user_input}")
                 
                 # Check exit commands
                 if any(word in user_input.lower() for word in ['quit', 'exit', 'stop', 'berhenti']):

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Zorglub AI - Main Application Entry Point
-Clean Architecture dengan app.py sebagai gerbang utama
+Clean Architecture with app.py as the main gateway
 """
+
 
 import sys
 import os
@@ -68,7 +69,7 @@ def main():
         show_banner()
         
         # Auto-start Ollama with configured model
-        print("\n🔧 Starting Ollama service...")
+        print("\n Starting Ollama service...")
         if not Config.start_ollama_model():
             print(" Ollama may not be ready, but continuing...")
         
@@ -98,7 +99,7 @@ def main():
             if container.check_dependencies():
                 interactive_mode(voice_assistant)
             else:
-                print("\n🔧 Run 'python app.py --check' to see what needs to be fixed")
+                print("\n Run 'python app.py --check' to see what needs to be fixed")
                 
     except KeyboardInterrupt:
         print("\n Program stopped by user")

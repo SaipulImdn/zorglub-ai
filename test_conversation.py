@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script untuk conversation logic
+Test script for conversation logic
 """
 
 from core.conversation_manager import ConversationManager

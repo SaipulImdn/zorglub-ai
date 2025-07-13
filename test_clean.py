@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Test script untuk mendemonstrasikan clean architecture tanpa Flask/HTML
+Test script to demonstrate clean architecture without Flask/HTML
 """
 
 from infrastructure.dependency_injection import DependencyContainer
 from core.use_cases.voice_assistant import VoiceAssistant
 
 def test_clean_architecture():
-    print("🧪 Testing Clean Architecture...")
+    print("Testing Clean Architecture...")
     print("=" * 50)
     
     # Test dependency injection

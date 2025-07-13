@@ -1,6 +1,5 @@
 """
-Conversation Manager untuk mengelola context dan history percakapan
-Membuat chat lebih natural dan nyambung seperti workflow n8n
+Conversation Manager for managing context and conversation history
 """
 
 import json

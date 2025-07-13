@@ -1,5 +1,5 @@
 """
-Configuration settings untuk Zorglub AI
+Configuration settings for Zorglub AI
 Centralized configuration management
 """
 

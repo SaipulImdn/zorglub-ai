@@ -7,7 +7,7 @@
 MODEL=${1:-mistral}
 MODE=${2:-}
 
-echo "🚀 Starting Zorglub AI with model: $MODEL"
+echo "Starting Zorglub AI with model: $MODEL"
 
 # Activate virtual environment
 source venv/bin/activate

@@ -6,7 +6,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PYTHON="$SCRIPT_DIR/venv/bin/python"
 
-echo "🤖 Zorglub AI Voice Assistant"
+echo "Zorglub AI Voice Assistant"
 echo "=============================="
 
 # Check if virtual environment exists

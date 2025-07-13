@@ -1,6 +1,6 @@
 """
 Dependency Injection Container
-Manages all dependencies dan service initialization
+Manages all dependencies and service initialization
 """
 
 import subprocess
