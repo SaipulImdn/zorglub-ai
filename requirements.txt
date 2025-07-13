@@ -1,0 +1,10 @@
+whisper
+sounddevice
+scipy
+numpy
+gtts
+simpleaudio
+pydub
+requests
+flask
+flask-cors
