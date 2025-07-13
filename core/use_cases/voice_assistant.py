@@ -105,6 +105,42 @@ class VoiceAssistant:
                 print("\n Exiting voice chat...")
                 break
 
+    def text_to_text_mode(self):
+        """Text to text chat mode - no voice output, text only"""
+        print("\n Text to Text Mode")
+        print("-" * 30)
+        print("Type your questions (or /quit to exit)")
+        print("AI will respond with text only (no voice)")
+        
+        while True:
+            try:
+                user_input = input("\n👤 You: ").strip()
+                
+                if user_input.lower() in ['/quit', '/exit', 'quit', 'exit']:
+                    break
+                elif user_input.lower() == '/help':
+                    self._show_help()
+                    continue
+                elif user_input.lower() == '/clear':
+                    self.conversation_manager.clear_conversation()
+                    print("Conversation history cleared")
+                    continue
+                elif user_input.lower() == '/status':
+                    self._show_conversation_status()
+                    continue
+                elif not user_input:
+                    continue
+                
+                # Get AI response with conversation context
+                ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
+                print(f"AI: {ai_response}")
+                
+                # NO voice output - text only mode
+                
+            except KeyboardInterrupt:
+                print("\n Exiting text to text mode...")
+                break
+
     def _show_help(self):
         """Show help commands"""
         print("\n Commands:")

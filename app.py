@@ -18,8 +18,9 @@ def show_banner():
     print("=" * 60)
     print("Modes:")
     print("  1. Single Voice - One recording, one response")
-    print("  2. Text Chat    - Type your questions")
+    print("  2. Text Chat    - Type your questions (with voice)")
     print("  3. Voice Chat   - Continuous voice conversation")
+    print("  4. Text to Text - Text only (no voice output)")
     print("=" * 60)
     print(f"AI Model: {Config.OLLAMA_MODEL}")
     print("=" * 60)
@@ -29,8 +30,9 @@ def show_help():
     print("\nUsage:")
     print("  python app.py           - Interactive mode")
     print("  python app.py --single  - Single voice interaction")
-    print("  python app.py --text    - Text chat mode")
+    print("  python app.py --text    - Text chat mode (with voice)")
     print("  python app.py --voice   - Voice chat mode")
+    print("  python app.py --textonly - Text to text mode (no voice)")
     print("  python app.py --check   - Check dependencies")
     print("  python app.py --help    - Show this help")
 
@@ -39,13 +41,14 @@ def interactive_mode(voice_assistant: VoiceAssistant):
     print("\n Interactive Mode")
     print("Choose your interaction style:")
     print("1. Single Voice (one-shot)")
-    print("2. Text Chat (continuous)")
+    print("2. Text Chat (continuous with voice)")
     print("3. Voice Chat (continuous)")
-    print("4. Exit")
+    print("4. Text to Text (no voice output)")
+    print("5. Exit")
     
     while True:
         try:
-            choice = input("\nSelect mode (1-4): ").strip()
+            choice = input("\nSelect mode (1-5): ").strip()
             
             if choice == '1':
                 voice_assistant.single_voice_interaction()
@@ -54,10 +57,12 @@ def interactive_mode(voice_assistant: VoiceAssistant):
             elif choice == '3':
                 voice_assistant.voice_chat_mode()
             elif choice == '4':
+                voice_assistant.text_to_text_mode()
+            elif choice == '5':
                 print("Goodbye!")
                 break
             else:
-                print("Invalid choice. Please select 1-4.")
+                print("Invalid choice. Please select 1-5.")
                 
         except KeyboardInterrupt:
             print("\n Goodbye!")
@@ -87,6 +92,8 @@ def main():
                 voice_assistant.text_chat_mode()
             elif mode in ['--voice', '-v']:
                 voice_assistant.voice_chat_mode()
+            elif mode in ['--textonly', '-to']:
+                voice_assistant.text_to_text_mode()
             elif mode in ['--check', '-c']:
                 container.check_dependencies()
             elif mode in ['--help', '-h']:

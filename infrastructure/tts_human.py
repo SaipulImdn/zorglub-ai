@@ -119,7 +119,7 @@ class HumanTTS:
     
     async def _generate_edge_audio_async(self, text: str, index: int) -> str:
         """
-        Async Edge TTS generation untuk natural human-like speech
+        Async Edge TTS generation for natural human-like speech
         """
         try:
             import edge_tts
