@@ -23,12 +23,12 @@ class VoiceAssistant:
         # Get voice input
         user_input = self.speech_input.listen()
         if not user_input:
-            print("Tidak ada input yang terdeteksi")
+            print("No input detected")
             return
         
-        print(f"👤 Anda: {user_input}")
+        print(f"You: {user_input}")
         
-        # Get AI response dengan conversation context
+        # Get AI response with conversation context
         ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
         print(f"AI: {ai_response}")
         
@@ -36,11 +36,11 @@ class VoiceAssistant:
         self.speech_output.speak(ai_response)
 
     def text_chat_mode(self):
-        """Text input chat mode dengan conversation context"""
+        """Text input chat mode with conversation context"""
         print("\n Text Chat Mode")
         print("-" * 20)
         print("Type your questions (or /quit to exit)")
-        print("AI akan mengingat percakapan sebelumnya untuk respon yang lebih natural")
+        print("AI will remember previous conversation for more natural responses")
         
         while True:
             try:
@@ -60,9 +60,9 @@ class VoiceAssistant:
                 elif not user_input:
                     continue
                 
-                # Get AI response dengan conversation context
+                # Get AI response with conversation context
                 ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
-                print(f"🤖 AI: {ai_response}")
+                print(f"AI: {ai_response}")
                 
                 # Speak response
                 self.speech_output.speak(ai_response)
@@ -72,11 +72,11 @@ class VoiceAssistant:
                 break
 
     def voice_chat_mode(self):
-        """Continuous voice chat mode dengan conversation context"""
+        """Continuous voice chat mode with conversation context"""
         print("\n Voice Chat Mode")
         print("-" * 20)
-        print("Say 'quit' or 'berhenti' to exit, or press Ctrl+C")
-        print("AI akan mengingat percakapan untuk respon yang lebih natural")
+        print("Say 'quit' or 'stop' to exit, or press Ctrl+C")
+        print("AI will remember conversation for more natural responses")
         
         while True:
             try:
@@ -84,17 +84,17 @@ class VoiceAssistant:
                 user_input = self.speech_input.listen()
                 
                 if not user_input:
-                    print("Tidak ada input. Coba lagi...")
+                    print("No input detected. Try again...")
                     continue
                 
-                print(f"Anda: {user_input}")
+                print(f"You: {user_input}")
                 
                 # Check exit commands
                 if any(word in user_input.lower() for word in ['quit', 'exit', 'stop', 'berhenti']):
                     print("Stopping voice chat...")
                     break
                 
-                # Get AI response dengan conversation context
+                # Get AI response with conversation context
                 ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
                 print(f"AI: {ai_response}")
                 

@@ -1,8 +1,9 @@
-openai-whisper
-sounddevice
-scipy
-numpy
-gtts
-pydub
-requests
-edge-tts
+openai-whisper>=20231117
+sounddevice>=0.4.4
+scipy>=1.9.0
+numpy>=1.21.0
+gtts>=2.5.4
+pydub>=0.25.1
+requests>=2.25.1
+edge-tts>=7.0.2
+aiohttp>=3.8.0
