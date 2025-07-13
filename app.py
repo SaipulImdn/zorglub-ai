@@ -1,101 +1,110 @@
-from flask import Flask, request, jsonify, render_template, send_file
-from flask_cors import CORS
+#!/usr/bin/env python3
+"""
+Zorglub AI - Main Application Entry Point
+Clean Architecture dengan app.py sebagai gerbang utama
+"""
+
+import sys
 import os
-import tempfile
-import io
-from core.use_cases.interact import interact_with_ai_web
-from core.interfaces.speech_input import SpeechToText
-from core.interfaces.ai_service import AIService
-from core.interfaces.speech_output import TextToSpeech
+from core.use_cases.voice_assistant import VoiceAssistant
+from infrastructure.dependency_injection import DependencyContainer
+from shared.config import Config
 
-app = Flask(__name__)
-CORS(app)
+def show_banner():
+    """Show welcome banner"""
+    print("=" * 60)
+    print("ZORGLUB AI - Voice Assistant")
+    print("=" * 60)
+    print("Modes:")
+    print("  1. Single Voice - One recording, one response")
+    print("  2. Text Chat    - Type your questions")
+    print("  3. Voice Chat   - Continuous voice conversation")
+    print("=" * 60)
+    print(f"AI Model: {Config.OLLAMA_MODEL}")
+    print("=" * 60)
 
-# Initialize services
-stt = SpeechToText()
-ai_service = AIService()
-tts = TextToSpeech()
+def show_help():
+    """Show available command line options"""
+    print("\nUsage:")
+    print("  python app.py           - Interactive mode")
+    print("  python app.py --single  - Single voice interaction")
+    print("  python app.py --text    - Text chat mode")
+    print("  python app.py --voice   - Voice chat mode")
+    print("  python app.py --check   - Check dependencies")
+    print("  python app.py --help    - Show this help")
 
-@app.route('/')
-def index():
-    return render_template('demo.html')
-
-@app.route('/api/process-voice', methods=['POST'])
-def process_voice():
-    try:
-        if 'audio' not in request.files:
-            return jsonify({'error': 'No audio file provided'}), 400
-        
-        audio_file = request.files['audio']
-        
-        # Save temporary audio file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
-            audio_file.save(tmp_file.name)
+def interactive_mode(voice_assistant: VoiceAssistant):
+    """Interactive mode dengan menu"""
+    print("\n Interactive Mode")
+    print("Choose your interaction style:")
+    print("1. Single Voice (one-shot)")
+    print("2. Text Chat (continuous)")
+    print("3. Voice Chat (continuous)")
+    print("4. Exit")
+    
+    while True:
+        try:
+            choice = input("\nSelect mode (1-4): ").strip()
             
-            # Process speech to text
-            user_input = stt.transcribe_file(tmp_file.name)
-            
-            if user_input:
-                # Get AI response
-                ai_response = ai_service.ask(user_input)
-                
-                # Clean up temp file
-                os.unlink(tmp_file.name)
-                
-                return jsonify({
-                    'user_text': user_input,
-                    'ai_text': ai_response,
-                    'success': True
-                })
+            if choice == '1':
+                voice_assistant.single_voice_interaction()
+            elif choice == '2':
+                voice_assistant.text_chat_mode()
+            elif choice == '3':
+                voice_assistant.voice_chat_mode()
+            elif choice == '4':
+                print("Goodbye!")
+                break
             else:
-                os.unlink(tmp_file.name)
-                return jsonify({'error': 'Could not transcribe audio'}), 400
+                print("Invalid choice. Please select 1-4.")
                 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        except KeyboardInterrupt:
+            print("\n Goodbye!")
+            break
 
-@app.route('/api/text-to-speech', methods=['POST'])
-def text_to_speech():
+def main():
+    """Main entry point"""
     try:
-        data = request.get_json()
-        text = data.get('text', '')
+        show_banner()
         
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
+        # Auto-start Ollama with configured model
+        print("\n🔧 Starting Ollama service...")
+        if not Config.start_ollama_model():
+            print(" Ollama may not be ready, but continuing...")
         
-        # Generate audio file
-        audio_file = tts.generate_audio_file(text)
+        # Initialize dependency container
+        container = DependencyContainer()
+        voice_assistant = container.get_voice_assistant()
         
-        return send_file(
-            audio_file,
-            mimetype='audio/mpeg',
-            as_attachment=True,
-            download_name='response.mp3'
-        )
-        
+        # Parse command line arguments
+        if len(sys.argv) > 1:
+            mode = sys.argv[1].lower()
+            
+            if mode in ['--single', '-s']:
+                voice_assistant.single_voice_interaction()
+            elif mode in ['--text', '-t']:
+                voice_assistant.text_chat_mode()
+            elif mode in ['--voice', '-v']:
+                voice_assistant.voice_chat_mode()
+            elif mode in ['--check', '-c']:
+                container.check_dependencies()
+            elif mode in ['--help', '-h']:
+                show_help()
+            else:
+                print(f"Unknown option: {mode}")
+                show_help()
+        else:
+            # Interactive mode
+            if container.check_dependencies():
+                interactive_mode(voice_assistant)
+            else:
+                print("\n🔧 Run 'python app.py --check' to see what needs to be fixed")
+                
+    except KeyboardInterrupt:
+        print("\n Program stopped by user")
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Fatal error: {e}")
+        sys.exit(1)
 
-@app.route('/api/text-only', methods=['POST'])
-def text_only():
-    try:
-        data = request.get_json()
-        user_input = data.get('text', '')
-        
-        if not user_input:
-            return jsonify({'error': 'No text provided'}), 400
-        
-        # Get AI response
-        ai_response = ai_service.ask(user_input)
-        
-        return jsonify({
-            'user_text': user_input,
-            'ai_text': ai_response,
-            'success': True
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    main()

@@ -1,39 +1,39 @@
 from gtts import gTTS
-import simpleaudio as sa
 import os
 import tempfile
-import io
-
-TEMP_MP3_FILE = "temp.mp3"
+import subprocess
+from shared.config import Config
 
 def speak_text(text: str):
-    tts = gTTS(text, lang='id')
-    filename = "output.wav"
-    tts.save(TEMP_MP3_FILE)
-
-    # convert mp3 to wav (required by simpleaudio)
-    from pydub import AudioSegment
-    sound = AudioSegment.from_mp3(TEMP_MP3_FILE)
-    sound.export(filename, format="wav")
-
-    # play audio
-    wave_obj = sa.WaveObject.from_wave_file(filename)
-    play_obj = wave_obj.play()
-    play_obj.wait_done()
-
-    os.remove(TEMP_MP3_FILE)
-    os.remove(filename)
-
-def generate_audio_file(text: str):
-    """Generate audio file for web API"""
+    """Play text using TTS with mpv for WSL compatibility"""
     try:
-        tts = gTTS(text, lang='id')
+        speech_settings = Config.get_speech_settings()
+        print("Generating speech...")
+        
+        tts = gTTS(text, lang=speech_settings['tts_language'])
         
         # Create temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-        tts.save(temp_file.name)
-        
-        return temp_file.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
+            tts.save(temp_file.name)
+            
+            print("🎵 Playing audio...")
+            # Play with mpv (works better in WSL)
+            result = subprocess.run(
+                [Config.AUDIO_PLAYER, '--no-video', '--really-quiet', temp_file.name], 
+                check=False, 
+                capture_output=True
+            )
+            
+            if result.returncode != 0:
+                print("Audio playback may have issues (normal in some environments)")
+            
+            # Cleanup
+            os.unlink(temp_file.name)
+            print("Speech completed")
+            
+    except FileNotFoundError:
+        print(f"{Config.AUDIO_PLAYER} not found. Install with: sudo apt install {Config.AUDIO_PLAYER}")
+        print(f"AI Response (text only): {text}")
     except Exception as e:
-        print(f"Error generating audio file: {e}")
-        return None
+        print(f"Error speaking: {e}")
+        print(f"AI Response (text only): {text}")

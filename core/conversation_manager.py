@@ -1,0 +1,187 @@
+"""
+Conversation Manager untuk mengelola context dan history percakapan
+Membuat chat lebih natural dan nyambung seperti workflow n8n
+"""
+
+import json
+import time
+from typing import List, Dict, Optional
+from dataclasses import dataclass, asdict
+from datetime import datetime
+
+@dataclass
+class Message:
+    role: str  # 'user' atau 'assistant'
+    content: str
+    timestamp: datetime
+    context_tags: List[str] = None
+
+    def __post_init__(self):
+        if self.context_tags is None:
+            self.context_tags = []
+
+class ConversationManager:
+    def __init__(self, max_history: int = 10):
+        self.conversation_history: List[Message] = []
+        self.max_history = max_history
+        self.current_context = {}
+        self.topics_discussed = set()
+        
+    def add_message(self, role: str, content: str, context_tags: List[str] = None):
+        """Tambah pesan ke history conversation"""
+        message = Message(
+            role=role,
+            content=content,
+            timestamp=datetime.now(),
+            context_tags=context_tags or []
+        )
+        
+        self.conversation_history.append(message)
+        
+        # Update topics yang dibahas
+        if context_tags:
+            self.topics_discussed.update(context_tags)
+        
+        # Trim history jika terlalu panjang
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
+    
+    def get_context_prompt(self, new_user_input: str) -> str:
+        """Generate prompt yang include context dari conversation sebelumnya"""
+        
+        # Detect context dari input user
+        context_tags = self._detect_context(new_user_input)
+        
+        # Build conversation context
+        context_messages = []
+        
+        # Include relevant previous messages
+        for msg in self.conversation_history[-5:]:  # Last 5 messages
+            context_messages.append(f"{msg.role.title()}: {msg.content}")
+        
+        # Detect if this is a follow-up question
+        is_followup = self._is_followup_question(new_user_input)
+        
+        # Build enhanced prompt
+        prompt_parts = []
+        
+        if context_messages:
+            prompt_parts.append("=== CONVERSATION HISTORY ===")
+            prompt_parts.extend(context_messages)
+            prompt_parts.append("=== END HISTORY ===\n")
+        
+        # Add context instructions
+        if is_followup:
+            prompt_parts.append("INSTRUCTION: Ini adalah pertanyaan lanjutan. Jawab berdasarkan context percakapan sebelumnya.")
+        
+        if self.topics_discussed:
+            topics = ", ".join(list(self.topics_discussed)[:3])
+            prompt_parts.append(f"TOPICS DISCUSSED: {topics}")
+        
+        # Add current user input
+        prompt_parts.append(f"USER: {new_user_input}")
+        
+        # Add response instructions
+        prompt_parts.append("\nINSTRUCTION: Berikan jawaban yang natural dan mengacu pada percakapan sebelumnya jika relevan. Gunakan bahasa Indonesia yang casual dan friendly.")
+        
+        return "\n".join(prompt_parts)
+    
+    def _detect_context(self, text: str) -> List[str]:
+        """Deteksi context tags dari input user"""
+        text_lower = text.lower()
+        
+        # Context detection rules
+        context_map = {
+            'programming': ['code', 'programming', 'python', 'javascript', 'coding', 'bug', 'error'],
+            'general': ['halo', 'hai', 'hello', 'hi', 'apa kabar', 'gimana'],
+            'question': ['apa', 'bagaimana', 'mengapa', 'kenapa', 'siapa', 'kapan', 'dimana'],
+            'follow_up': ['itu', 'tadi', 'sebelumnya', 'lanjutannya', 'terus', 'lalu'],
+            'technical': ['cara', 'tutorial', 'belajar', 'install', 'setup', 'konfigurasi'],
+            'personal': ['saya', 'aku', 'kamu', 'kita', 'cerita', 'sharing']
+        }
+        
+        detected_tags = []
+        for tag, keywords in context_map.items():
+            if any(keyword in text_lower for keyword in keywords):
+                detected_tags.append(tag)
+        
+        return detected_tags
+    
+    def _is_followup_question(self, text: str) -> bool:
+        """Deteksi apakah ini pertanyaan lanjutan"""
+        followup_indicators = [
+            'itu', 'tadi', 'sebelumnya', 'yang', 'lanjutannya', 
+            'terus', 'lalu', 'kemudian', 'selanjutnya', 'bagaimana dengan',
+            'dan', 'tapi', 'namun', 'kalau', 'kalo'
+        ]
+        
+        text_lower = text.lower()
+        has_followup = any(indicator in text_lower for indicator in followup_indicators)
+        has_recent_history = len(self.conversation_history) > 0
+        
+        return has_followup and has_recent_history
+    
+    def get_conversation_summary(self) -> Dict:
+        """Get summary dari conversation untuk debugging"""
+        return {
+            'total_messages': len(self.conversation_history),
+            'topics_discussed': list(self.topics_discussed),
+            'last_message_time': self.conversation_history[-1].timestamp.isoformat() if self.conversation_history else None,
+            'recent_messages': [
+                {'role': msg.role, 'content': msg.content[:50] + '...' if len(msg.content) > 50 else msg.content}
+                for msg in self.conversation_history[-3:]
+            ]
+        }
+    
+    def clear_conversation(self):
+        """Reset conversation history"""
+        self.conversation_history.clear()
+        self.topics_discussed.clear()
+        self.current_context.clear()
+        print("Conversation history cleared")
+    
+    def save_conversation(self, filename: str = None):
+        """Save conversation to file"""
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"conversation_{timestamp}.json"
+        
+        data = {
+            'conversation_history': [
+                {
+                    'role': msg.role,
+                    'content': msg.content,
+                    'timestamp': msg.timestamp.isoformat(),
+                    'context_tags': msg.context_tags
+                }
+                for msg in self.conversation_history
+            ],
+            'topics_discussed': list(self.topics_discussed)
+        }
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        print(f"Conversation saved to {filename}")
+    
+    def load_conversation(self, filename: str):
+        """Load conversation from file"""
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            self.conversation_history = [
+                Message(
+                    role=msg['role'],
+                    content=msg['content'],
+                    timestamp=datetime.fromisoformat(msg['timestamp']),
+                    context_tags=msg.get('context_tags', [])
+                )
+                for msg in data['conversation_history']
+            ]
+            
+            self.topics_discussed = set(data.get('topics_discussed', []))
+            print(f"Conversation loaded from {filename}")
+            
+        except Exception as e:
+            print(f"Error loading conversation: {e}")

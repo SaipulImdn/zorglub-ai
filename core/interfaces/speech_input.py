@@ -1,19 +1,14 @@
 from abc import ABC, abstractmethod
 
-class SpeechToTextInterface(ABC):
+class SpeechInputInterface(ABC):
     @abstractmethod
     def listen(self) -> str:
         pass
-    
-    @abstractmethod
-    def transcribe_file(self, file_path: str) -> str:
-        pass
 
-class SpeechToText(SpeechToTextInterface):
+class SpeechInput(SpeechInputInterface):
     def listen(self) -> str:
         from infrastructure.stt_whisper import transcribe_audio
         return transcribe_audio()
-    
-    def transcribe_file(self, file_path: str) -> str:
-        from infrastructure.stt_whisper import transcribe_audio_file
-        return transcribe_audio_file(file_path)
+
+# Alias untuk backward compatibility
+SpeechToText = SpeechInput
