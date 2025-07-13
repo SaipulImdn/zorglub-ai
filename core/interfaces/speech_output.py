@@ -7,7 +7,7 @@ class SpeechOutputInterface(ABC):
 
 class SpeechOutput(SpeechOutputInterface):
     def speak(self, text: str) -> None:
-        from infrastructure.tts_gtts import speak_text
+        from infrastructure.tts_human import speak_text
         speak_text(text)
 
 # Alias untuk backward compatibility

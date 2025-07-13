@@ -17,6 +17,13 @@ class Config:
     TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "id")  # Bahasa Indonesia
     STT_LANGUAGE = os.getenv("STT_LANGUAGE", "id")  # Bahasa Indonesia
     
+    # Enhanced TTS Configuration
+    TTS_ENGINE = os.getenv("TTS_ENGINE", "edge")  # edge, piper, festival, gtts
+    TTS_VOICE = os.getenv("TTS_VOICE", "id-ID-ArdiNeural")  # Voice untuk Edge TTS
+    TTS_RATE = os.getenv("TTS_RATE", "+0%")  # Speaking rate
+    TTS_VOLUME = os.getenv("TTS_VOLUME", "+0%")  # Volume
+    TTS_PITCH = os.getenv("TTS_PITCH", "+0Hz")  # Pitch
+    
     # Audio Configuration
     RECORDING_DURATION = int(os.getenv("RECORDING_DURATION", "5"))  # detik
     SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
@@ -50,7 +57,14 @@ class Config:
         return {
             'tts_language': cls.TTS_LANGUAGE,
             'stt_language': cls.STT_LANGUAGE,
-            'whisper_model': cls.WHISPER_MODEL
+            'whisper_model': cls.WHISPER_MODEL,
+            'tts_engine': cls.TTS_ENGINE,
+            'tts_voice': cls.TTS_VOICE,
+            'tts_rate': cls.TTS_RATE,
+            'tts_volume': cls.TTS_VOLUME,
+            'tts_pitch': cls.TTS_PITCH,
+            'edge_voice': cls.TTS_VOICE,
+            'piper_model': 'id_ID-fajri-medium'
         }
     
     @classmethod

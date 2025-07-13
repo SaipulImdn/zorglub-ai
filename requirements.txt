@@ -1,7 +1,8 @@
-whisper
+openai-whisper
 sounddevice
 scipy
 numpy
 gtts
 pydub
 requests
+edge-tts
