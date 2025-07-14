@@ -10,6 +10,9 @@ from pathlib import Path
 import re
 from shared.config import Config
 from .base_factory import ServiceFactory, SingletonMixin, resource_manager
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent / 'audio_filter'))
+from audio_filter.audio_filter import AudioFilter
 
 class AudioQueue:
     def __init__(self):
@@ -201,6 +204,7 @@ class OptimizedTTS:
         self.audio_queue = AudioQueue()
         self.text_segmenter = TextSegmenter()
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        self.audio_filter = AudioFilter()
         resource_manager.register_resource(
             self.engine_manager,
             self.engine_manager.cleanup_temp_files
@@ -285,8 +289,23 @@ class OptimizedTTS:
     
     def _play_audio_sync(self, audio_file: str):
         try:
+            if audio_file.endswith('.wav'):
+                import wave
+                import numpy as np
+                with wave.open(audio_file, 'rb') as wf:
+                    params = wf.getparams()
+                    frames = wf.readframes(wf.getnframes())
+                    samples = np.frombuffer(frames, dtype=np.int16)
+                filtered = self.audio_filter.apply_gain(samples, 1.5)
+                filtered_file = audio_file.replace('.wav', '_filtered.wav')
+                with wave.open(filtered_file, 'wb') as wf:
+                    wf.setparams(params)
+                    wf.writeframes(filtered.tobytes())
+                play_file = filtered_file
+            else:
+                play_file = audio_file
             subprocess.run(
-                ['mpv', '--no-video', '--really-quiet', audio_file],
+                ['mpv', '--no-video', '--really-quiet', play_file],
                 check=False,
                 capture_output=True
             )
@@ -298,6 +317,9 @@ class OptimizedTTS:
             try:
                 if os.path.exists(audio_file):
                     os.remove(audio_file)
+                filtered_file = audio_file.replace('.wav', '_filtered.wav')
+                if os.path.exists(filtered_file):
+                    os.remove(filtered_file)
             except Exception:
                 pass
 
