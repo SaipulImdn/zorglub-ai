@@ -3,7 +3,6 @@ import threading
 import time
 from typing import Dict, Any, Optional, TypeVar, Type, Callable
 from contextlib import contextmanager
-
 from .factories.base_factory import resource_manager, DependencyValidator
 from .factories.ai_factory import get_ai_client, AIServiceFactory
 from .factories.speech_factory import get_stt_service, SpeechServiceFactory
