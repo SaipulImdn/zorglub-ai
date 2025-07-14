@@ -33,6 +33,3 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
-
-      - name: Image digest
-        run: echo "Image digest: ${{ steps.docker_build.outputs.digest }}"
