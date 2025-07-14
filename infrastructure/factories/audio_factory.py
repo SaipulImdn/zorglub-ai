@@ -8,7 +8,6 @@ import time
 from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
 import re
-
 from shared.config import Config
 from .base_factory import ServiceFactory, SingletonMixin, resource_manager
 
@@ -167,24 +166,26 @@ class TTSEngineManager:
     def _synthesize_edge(self, text: str) -> str:
         try:
             import edge_tts
-            
-            temp_file = self._create_temp_file('.mp3')
-            
-            # Run edge-tts synthesis
+            import os
             voice = self.config.get('edge_voice', 'id-ID-ArdiNeural')
-            
+            rate = self.config.get('edge_rate', '+0%')
+            volume = self.config.get('edge_volume', '+0%')
+            ext = self.config.get('edge_format', 'mp3')
+            if ext not in ('mp3', 'wav'):
+                ext = 'mp3'
+            temp_file = self._create_temp_file(f'.{ext}')
             async def _synthesize():
-                communicate = edge_tts.Communicate(text, voice)
+                communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume)
                 await communicate.save(temp_file)
-            
-            # Run in event loop
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(_synthesize())
             loop.close()
-            
+            for _ in range(10):
+                if os.path.exists(temp_file) and os.path.getsize(temp_file) > 1024:
+                    break
+                time.sleep(0.1)
             return temp_file
-            
         except ImportError:
             raise ImportError("edge-tts not installed. Install with: pip install edge-tts")
     
