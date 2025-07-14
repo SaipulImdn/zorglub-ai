@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 from core.interfaces.ai_service import AIServiceInterface
@@ -186,7 +187,7 @@ def patch_original_interfaces():
     speech_input.SpeechToText = lambda: SpeechToTextAdapter(use_multiprocess=True)
     speech_output.TextToSpeech = lambda: TextToSpeechAdapter(use_multiprocess=True)
     
-    print("Patched interfaces dengan enhanced multiprocess implementations")
+    logging.getLogger(__name__).info("Patched interfaces dengan enhanced multiprocess implementations")
 
 # Auto-patch saat module di-import
 patch_original_interfaces()

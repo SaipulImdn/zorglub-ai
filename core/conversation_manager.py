@@ -1,3 +1,4 @@
+import logging
 import json
 import time
 from typing import List, Dict, Optional
@@ -113,13 +114,12 @@ class ConversationManager:
         self.conversation_history.clear()
         self.topics_discussed.clear()
         self.current_context.clear()
-        print("Conversation history cleared")
+        logging.getLogger(__name__).info("Conversation history cleared")
     
     def save_conversation(self, filename: str = None):
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"conversation_{timestamp}.json"
-        
         data = {
             'conversation_history': [
                 {
@@ -132,17 +132,15 @@ class ConversationManager:
             ],
             'topics_discussed': list(self.topics_discussed)
         }
-        
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        print(f"Conversation saved to {filename}")
+        logging.getLogger(__name__).info(f"Conversation saved to {filename}")
     
     def load_conversation(self, filename: str):
+        logger = logging.getLogger(__name__)
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
             self.conversation_history = [
                 Message(
                     role=msg.role,
@@ -152,12 +150,10 @@ class ConversationManager:
                 )
                 for msg in data['conversation_history']
             ]
-            
             self.topics_discussed = set(data.get('topics_discussed', []))
-            print(f"Conversation loaded from {filename}")
-            
+            logger.info(f"Conversation loaded from {filename}")
         except Exception as e:
-            print(f"Error loading conversation: {e}")
+            logger.error(f"Error loading conversation: {e}")
     
     def get_conversation_history(self) -> List[Message]:
         """Get the complete conversation history"""

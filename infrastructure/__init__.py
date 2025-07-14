@@ -45,7 +45,17 @@ from .adapters import (
     get_enhanced_tts_service
 )
 
-# Performance monitoring
+
+# Centralized logging setup
+import logging
+def setup_logging(level=logging.INFO, log_format=None):
+    if log_format is None:
+        log_format = "[%(asctime)s] %(levelname)s %(name)s: %(message)s"
+    logging.basicConfig(level=level, format=log_format)
+    logging.getLogger("multiprocessing").setLevel(logging.WARNING)
+
+setup_logging()
+
 import time
 import threading
 import multiprocessing as mp
@@ -197,78 +207,88 @@ def print_system_status(use_multiprocess: bool = True):
     _print_dependencies_status(status['dependencies'])
     _print_resource_usage(status['resource_usage'])
     
+    logger = logging.getLogger("system_status")
     if use_multiprocess and 'performance_stats' in status:
         _print_detailed_performance(status['performance_stats'])
-    
-    print(f"{'=' * 60}")
+    logger.info(f"{'=' * 60}")
 
 def _print_header(mode: str):
     """Print status header"""
-    print(f"\n{'=' * 60}")
-    print(f"ZORGLUB AI - SYSTEM STATUS ({mode})")
-    print(f"{'=' * 60}")
+    logger = logging.getLogger("system_status")
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"ZORGLUB AI - SYSTEM STATUS ({mode})")
+    logger.info(f"{'=' * 60}")
 
 def _print_system_info(mp_info: Dict[str, Any]):
     """Print system information"""
-    print("\n SYSTEM INFO:")
-    print(f"  CPU Count: {mp_info['cpu_count']}")
-    print(f"  Process ID: {mp_info['current_process_id']}")
-    print(f"  Mode: {'Multiprocessing' if mp_info['use_multiprocess'] else 'Threading'}")
+    logger = logging.getLogger("system_status")
+    logger.info("\n SYSTEM INFO:")
+    logger.info(f"  CPU Count: {mp_info['cpu_count']}")
+    logger.info(f"  Process ID: {mp_info['current_process_id']}")
+    logger.info(f"  Mode: {'Multiprocessing' if mp_info['use_multiprocess'] else 'Threading'}")
 
 def _print_services_status(services: Dict[str, Any]):
     """Print services status"""
-    print("\n SERVICES:")
-    print(f"  Initialized: {'ok' if services['initialized'] else 'no'}")
+    logger = logging.getLogger("system_status")
+    logger.info("\n SERVICES:")
+    logger.info(f"  Initialized: {'ok' if services['initialized'] else 'no'}")
     for service, health in services['services'].items():
-        print(f"  {service}: {'ok' if health else 'no'}")
+        logger.info(f"  {service}: {'ok' if health else 'no'}")
 
 def _print_performance_metrics(perf: Dict[str, Any]):
     """Print performance metrics"""
-    print("\n PERFORMANCE:")
-    print(f"  Requests: {perf['requests']}")
-    print(f"  Avg Response Time: {perf['avg_response_time']:.2f}s")
-    print(f"  Cache Hit Rate: {perf['cache_hit_rate']}")
-    print(f"  Error Rate: {perf['error_rate']}")
-    print(f"  Parallel Ratio: {perf['parallel_ratio']}")
-    print(f"  Uptime: {perf['uptime_seconds']:.0f}s")
+    logger = logging.getLogger("system_status")
+    logger.info("\n PERFORMANCE:")
+    logger.info(f"  Requests: {perf['requests']}")
+    logger.info(f"  Avg Response Time: {perf['avg_response_time']:.2f}s")
+    logger.info(f"  Cache Hit Rate: {perf['cache_hit_rate']}")
+    logger.info(f"  Error Rate: {perf['error_rate']}")
+    logger.info(f"  Parallel Ratio: {perf['parallel_ratio']}")
+    logger.info(f"  Uptime: {perf['uptime_seconds']:.0f}s")
 
 def _print_dependencies_status(dependencies: Dict[str, bool]):
     """Print dependencies status"""
-    print("\n DEPENDENCIES:")
+    logger = logging.getLogger("system_status")
+    logger.info("\n DEPENDENCIES:")
     for dep, status_ok in dependencies.items():
-        print(f"  {dep}: {'ok' if status_ok else 'no'}")
+        logger.info(f"  {dep}: {'ok' if status_ok else 'no'}")
 
 def _print_resource_usage(res: Dict[str, Any]):
     """Print resource usage"""
-    print("\n RESOURCES:")
-    print(f"  Registered Resources: {res['registered_resources']}")
-    print(f"  Cleanup Callbacks: {res['cleanup_callbacks']}")
+    logger = logging.getLogger("system_status")
+    logger.info("\n RESOURCES:")
+    logger.info(f"  Registered Resources: {res['registered_resources']}")
+    logger.info(f"  Cleanup Callbacks: {res['cleanup_callbacks']}")
 
 def _print_detailed_performance(perf_stats: Dict[str, Any]):
     """Print detailed performance stats"""
-    print("\n  DETAILED PERFORMANCE:")
+    logger = logging.getLogger("system_status")
+    logger.info("\n  DETAILED PERFORMANCE:")
     for service, stats in perf_stats.items():
         if isinstance(stats, dict) and 'error' not in stats:
             _print_service_stats(service, stats)
 
 def _print_nested_stats(value_dict: Dict[str, Any]):
     """Print nested statistics"""
+    logger = logging.getLogger("system_status")
     for subkey, subval in value_dict.items():
-        print(f"    {subkey}: {subval}")
+        logger.info(f"    {subkey}: {subval}")
 
 def _print_service_stats(service: str, stats: Dict[str, Any]):
     """Print stats for a single service"""
-    print(f"  {service.upper()}:")
+    logger = logging.getLogger("system_status")
+    logger.info(f"  {service.upper()}:")
     for key, value in stats.items():
         if isinstance(value, dict):
             _print_nested_stats(value)
         else:
-            print(f"    {key}: {value}")
+            logger.info(f"    {key}: {value}")
 
 # Convenience functions
 def quick_start(use_multiprocess: bool = True) -> bool:
     mode = "multiprocessing" if use_multiprocess else "threading"
-    print(f"Starting Zorglub AI with {mode}...")
+    logger = logging.getLogger("quick_start")
+    logger.info(f"Starting Zorglub AI with {mode}...")
     
     if use_multiprocess:
         success = initialize_multiprocess_services()
@@ -277,16 +297,17 @@ def quick_start(use_multiprocess: bool = True) -> bool:
     
     if success:
         print_system_status(use_multiprocess)
-        print(f"\n Zorglub AI is ready with {mode}!")
+        logger.info(f"\n Zorglub AI is ready with {mode}!")
         return True
     else:
-        print("\n  Some services failed to start")
+        logger.warning("\n  Some services failed to start")
         print_system_status(use_multiprocess)
         return False
 
 def quick_test(use_multiprocess: bool = True):
     mode = "multiprocessing" if use_multiprocess else "threading"
-    print(f" Testing Zorglub AI services with {mode}...")
+    logger = logging.getLogger("quick_test")
+    logger.info(f"Testing Zorglub AI services with {mode}...")
     
     try:
         # Test AI service
@@ -294,56 +315,48 @@ def quick_test(use_multiprocess: bool = True):
             ai_client = get_multiprocess_ai_client()
         else:
             ai_client = get_ai_client()
-        
         response = ai_client.ask("Hello, can you respond briefly?", use_cache=False)
-        print(f"AI Service: {response[:50]}...")
-        
+        logger.info(f"AI Service: {response[:50]}...")
         # Test STT service
         if use_multiprocess:
             get_multiprocess_stt_service()
         else:
             get_stt_service()
-        print("STT Service: Ready")
-        
+        logger.info("STT Service: Ready")
         # Test TTS service
         if use_multiprocess:
             get_multiprocess_tts_service()
         else:
             get_tts_service()
-        print("TTS Service: Ready")
-        
-        print(f"\n All services are working with {mode}!")
-        
+        logger.info("TTS Service: Ready")
+        logger.info(f"\n All services are working with {mode}!")
     except Exception as e:
-        print(f"\n Service test failed: {e}")
+        logger.error(f"\n Service test failed: {e}")
 
 def benchmark_performance():
     """Benchmark performance comparison antara threading vs multiprocessing"""
-    print("Starting performance benchmark...")
-    
+    logger = logging.getLogger("benchmark_performance")
+    logger.info("Starting performance benchmark...")
     # Test dengan threading
-    print("\n Testing with Threading...")
+    logger.info("\n Testing with Threading...")
     start_time = time.time()
     quick_test(use_multiprocess=False)
     threading_time = time.time() - start_time
-    
     # Test dengan multiprocessing
-    print("\n Testing with Multiprocessing...")
+    logger.info("\n Testing with Multiprocessing...")
     start_time = time.time()
     quick_test(use_multiprocess=True)
     multiprocess_time = time.time() - start_time
-    
     # Compare results
-    print("\n BENCHMARK RESULTS:")
-    print(f"  Threading Time: {threading_time:.2f}s")
-    print(f"  Multiprocessing Time: {multiprocess_time:.2f}s")
-    
+    logger.info("\n BENCHMARK RESULTS:")
+    logger.info(f"  Threading Time: {threading_time:.2f}s")
+    logger.info(f"  Multiprocessing Time: {multiprocess_time:.2f}s")
     if multiprocess_time < threading_time:
         improvement = ((threading_time - multiprocess_time) / threading_time) * 100
-        print(f" Multiprocessing is {improvement:.1f}% faster!")
+        logger.info(" Multiprocessing is %.1f%% faster!", improvement)
     else:
         degradation = ((multiprocess_time - threading_time) / threading_time) * 100
-        print(f" Multiprocessing is {degradation:.1f}% slower")
+        logger.info(" Multiprocessing is %.1f%% slower", degradation)
 
 # Export main components
 __all__ = [

@@ -1,3 +1,5 @@
+import logging
+logging.basicConfig(level=logging.INFO)
 #!/usr/bin/env python3
 """
 Zorglub AI - Main Application Entry Point
@@ -33,6 +35,21 @@ def show_banner():
     print(f"AI Model: {Config.OLLAMA_MODEL}")
     print("Architecture: Modern Multiprocessing + Fallback Threading")
     print("=" * 70)
+    logger = logging.getLogger("banner")
+    logger.info("=" * 70)
+    logger.info("ZORGLUB AI - Advanced Voice Assistant")
+    logger.info("=" * 70)
+    logger.info("Modes:")
+    logger.info("  1. Single Voice - One recording, one response")
+    logger.info("  2. Text Chat    - Type your questions (with voice)")
+    logger.info("  3. Voice Chat   - Continuous voice conversation")
+    logger.info("  4. Text to Text - Text only (no voice output)")
+    logger.info("  5. System Check - Check system status")
+    logger.info("  6. Benchmark    - Performance comparison")
+    logger.info("=" * 70)
+    logger.info(f"AI Model: {Config.OLLAMA_MODEL}")
+    logger.info("Architecture: Modern Multiprocessing + Fallback Threading")
+    logger.info("=" * 70)
 
 def show_help():
     """Show available command line options"""
@@ -51,6 +68,22 @@ def show_help():
     print("  python app.py --voice --threading  # Voice mode with threading")
     print("  python app.py --benchmark          # Compare performance")
     print("  python app.py --check              # System health check")
+    logger = logging.getLogger("help")
+    logger.info("\n USAGE:")
+    logger.info("  python app.py                - Interactive mode")
+    logger.info("  python app.py --single   -s  - Single voice interaction")
+    logger.info("  python app.py --text     -t  - Text chat mode (with voice)")
+    logger.info("  python app.py --voice    -v  - Voice chat mode")
+    logger.info("  python app.py --textonly -to - Text to text mode (no voice)")
+    logger.info("  python app.py --check    -c  - Check system status")
+    logger.info("  python app.py --status   -st - Show detailed system status")
+    logger.info("  python app.py --benchmark -b - Performance benchmark")
+    logger.info("  python app.py --threading -th- Force threading mode")
+    logger.info("  python app.py --help     -h  - Show this help")
+    logger.info("\n🔧 EXAMPLES:")
+    logger.info("  python app.py --voice --threading  # Voice mode with threading")
+    logger.info("  python app.py --benchmark          # Compare performance")
+    logger.info("  python app.py --check              # System health check")
 
 def interactive_mode(voice_assistant: VoiceAssistant):
     """Interactive mode dengan menu"""
@@ -62,6 +95,15 @@ def interactive_mode(voice_assistant: VoiceAssistant):
     print("4. Text to Text (no voice output)")
     print("5. System Status")
     print("6. Exit")
+    logger = logging.getLogger("interactive_mode")
+    logger.info("\n INTERACTIVE MODE")
+    logger.info("Choose your interaction style:")
+    logger.info("1. Single Voice (one-shot)")
+    logger.info("2. Text Chat (continuous with voice)")
+    logger.info("3. Voice Chat (continuous)")
+    logger.info("4. Text to Text (no voice output)")
+    logger.info("5. System Status")
+    logger.info("6. Exit")
     
     while True:
         try:
@@ -86,6 +128,8 @@ def interactive_mode(voice_assistant: VoiceAssistant):
         except KeyboardInterrupt:
             print("\n Goodbye!")
             break
+            logger = logging.getLogger("interactive_mode")
+            logger.info(f"User selected mode: {choice}")
 
 def main():
     try:
@@ -116,6 +160,30 @@ def main():
         print("\n rogram stopped by user")
     except Exception as e:
         print(f"Fatal error: {e}")
+        sys.exit(1)
+    logger = logging.getLogger("main")
+    try:
+        show_banner()
+        # Parse command line arguments first
+        args = parse_arguments()
+        if args.get('help'):
+            show_help()
+            return
+        # Auto-start Ollama
+        logger.info("\n Starting Ollama service...")
+        if not Config.start_ollama_model():
+            logger.warning("Ollama may not be ready, but continuing...")
+        # Initialize services dengan pilihan mode
+        use_multiprocess = args.get('multiprocess', True)
+        if not quick_start(use_multiprocess=use_multiprocess):
+            logger.error("\n Failed to start services")
+            return
+        # Handle different modes
+        handle_user_mode(args, use_multiprocess)
+    except KeyboardInterrupt:
+        logger.info("\n Program stopped by user")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
         sys.exit(1)
 
 def parse_arguments():
