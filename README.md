@@ -23,8 +23,12 @@ zorglub-ai/
 │   ├── stt_whisper.py       # Speech-to-Text Implementation
 │   ├── tts_gtts.py          # Google TTS Implementation
 │   └── tts_human.py         # Advanced Human-like TTS
-└── shared/                  # Cross-cutting Concerns
-    └── config.py            # Configuration Management
+├── shared/                  # Cross-cutting Concerns
+│   └── config.py            # Configuration Management
+├── Dockerfile               # Docker build file
+└── .github/
+    └── workflows/
+        └── docker-build.yml # GitHub Actions CI/CD workflow
 ```
 
 ## Key Features
@@ -38,6 +42,56 @@ zorglub-ai/
 - **Configurable**: Environment-based configuration system
 - **Auto-start Integration**: Automatic Ollama model initialization
 
+    steps:
+
+
+python app.py --single
+
+# Zorglub AI - Voice Assistant CLI
+
+A professional CLI-based voice assistant application built with Clean Architecture principles, integrating Ollama for AI responses, Whisper for speech-to-text, and advanced TTS engines for text-to-speech.
+
+## Architecture Overview
+
+This project implements Clean Architecture with clear separation of concerns:
+
+```
+zorglub-ai/
+├── app.py                    # Main entry point
+├── core/                     # Business Logic Layer
+│   ├── interfaces/           # Contracts and Abstractions
+│   │   ├── ai_service.py
+│   │   ├── speech_input.py
+│   │   └── speech_output.py
+│   ├── use_cases/           # Application Business Rules
+│   │   └── voice_assistant.py
+│   └── conversation_manager.py  # Conversation Context Management
+├── infrastructure/          # External Dependencies
+│   ├── dependency_injection.py  # Dependency Injection Container
+│   ├── ollama_client.py     # AI Model Integration
+│   ├── stt_whisper.py       # Speech-to-Text Implementation
+│   ├── tts_gtts.py          # Google TTS Implementation
+│   └── tts_human.py         # Advanced Human-like TTS
+├── shared/                  # Cross-cutting Concerns
+│   └── config.py            # Configuration Management
+├── Dockerfile               # Docker build file
+└── .github/
+    └── workflows/
+        └── docker-build.yml # GitHub Actions CI/CD workflow
+```
+
+## Key Features
+
+- **Voice Input Processing**: Advanced speech recognition using OpenAI Whisper
+- **Natural AI Responses**: Context-aware conversations with memory management
+- **Human-like Voice Output**: Multiple TTS engines including Microsoft Edge TTS
+- **Conversation Context**: Maintains conversation history for natural interactions
+- **Cross-platform Compatibility**: Works on Linux, WSL, and other Unix-like systems
+- **Clean Architecture**: Modular design with dependency injection
+- **Configurable**: Environment-based configuration system
+- **Auto-start Integration**: Automatic Ollama model initialization
+- **Dockerized & CI/CD Ready**: Build and deploy with Docker and GitHub Actions
+
 ## System Requirements
 
 - Python 3.8 or higher
@@ -45,14 +99,15 @@ zorglub-ai/
 - AI model (mistral, deepseek-r1, or compatible) installed in Ollama
 - Audio system support (ALSA, PulseAudio, or equivalent)
 - Media player (mpv recommended)
+- Docker (for containerized deployment)
 
 ## Installation
 
-### 1. Environment Setup
+### 1. Environment Setup (Manual)
 
 ```bash
 # Clone repository
-git clone https://github.com/SaipulImdn/zorglub-ai.git
+./run_with_model.sh mistral --voice
 cd zorglub-ai
 
 # Create virtual environment
@@ -91,66 +146,94 @@ ollama pull llama3.2
 
 ```bash
 # For Microsoft Edge TTS (highest quality)
-pip install edge-tts
+./run_with_model.sh deepseek-r1 --text
 
 # For Piper TTS (neural, local)
 # Download from: https://github.com/rhasspy/piper
 
 # For Festival TTS (classic)
-sudo apt install festival
+```
 ```
 
-## Usage
-
-### Command Line Interface
+### 5. Docker Build & Run
 
 ```bash
-# Interactive mode with menu
-python app.py
+# Build Docker image
 
-# Single voice interaction
-python app.py --single
 
-# Text chat mode with voice responses
-python app.py --text
-
-# Continuous voice conversation
-python app.py --voice
-
-# System dependency check
-python app.py --check
-
-# Display help information
-python app.py --help
-```
-
-### Interactive Menu
-
-Running `python app.py` presents an interactive menu:
-
-```
-Interactive Mode
-Choose your interaction style:
-1. Single Voice (one-shot)
-2. Text Chat (continuous)
-3. Voice Chat (continuous)
-4. Exit
-```
-
-### Model Selection
-
-```bash
-# Using environment variables
-OLLAMA_MODEL=deepseek-r1 python app.py --text
-
-# Using helper script
-./run_with_model.sh mistral --voice
-./run_with_model.sh deepseek-r1 --text
-```
-
+# Run the container
 ## Configuration
+    -e OLLAMA_URL="http://host.docker.internal:11434/api/chat" \
+    -e OLLAMA_MODEL="mistral" \
+    zorglub-ai
+```
+
+> **Note:** Make sure Ollama and audio dependencies are available on the host or container as needed.
+
+## CI/CD with GitHub Actions & Docker
+
+This project is ready for automated CI/CD using Docker and GitHub Actions.
+
+### 1. Workflow Structure
+
+- Workflow file: `.github/workflows/docker-build.yml`
+- Builds image on every push/pull request to the `main` branch
+- Pushes image to DockerHub (requires secrets)
+
+### 2. Setup DockerHub Secrets
+
+1. Log in to GitHub and open your repository.
+2. Go to **Settings** → **Secrets and variables** → **Actions**.
+3. Add secrets:
+   - `DOCKERHUB_USERNAME` (your DockerHub username)
+   - `DOCKERHUB_TOKEN` (your DockerHub access token, get it from DockerHub > Account Settings > Security > New Access Token)
+
+### 3. Example Workflow (`.github/workflows/docker-build.yml`)
+
+```yaml
+name: Build and Push Docker Image
+
+
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 ### Environment Variables
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
+```
+
+### 4. Create DockerHub Access Token
+
+- Log in to DockerHub
+- Go to Account Settings → Security → New Access Token
+- Choose permission: **Read, Write** (or **Delete** if needed)
+- Copy the token and save it as `DOCKERHUB_TOKEN` in GitHub secrets
+
+## Usage
 
 ```bash
 # Ollama Configuration
@@ -340,4 +423,4 @@ For issues and questions:
 
 ---
 
-**Professional Voice AI Assistant with Clean Architecture**
+**Professional Voice AI
