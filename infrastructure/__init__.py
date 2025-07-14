@@ -1,4 +1,3 @@
-# Import modern components
 from .modern_container import (
     get_container,
     initialize_services,
@@ -6,7 +5,6 @@ from .modern_container import (
     managed_services
 )
 
-# Import multiprocess components
 from .multiprocess_container import (
     get_multiprocess_container,
     initialize_multiprocess_services,
@@ -23,19 +21,16 @@ from .enhanced_config import (
     PerformanceConfig
 )
 
-# Regular factories
 from .factories.ai_factory import get_ai_client
 from .factories.speech_factory import get_stt_service
 from .factories.audio_factory import get_tts_service
 
-# Multiprocess factories
 from .factories.multiprocess_ai_factory import get_multiprocess_ai_client
 from .factories.multiprocess_speech_factory import get_multiprocess_stt_service
 from .factories.multiprocess_audio_factory import get_multiprocess_tts_service
 
 from .factories.base_factory import resource_manager, DependencyValidator
 
-# Import adapters untuk backward compatibility
 from .adapters import (
     AIServiceAdapter,
     SpeechToTextAdapter,
@@ -45,8 +40,6 @@ from .adapters import (
     get_enhanced_tts_service
 )
 
-
-# Centralized logging setup
 import logging
 def setup_logging(level=logging.INFO, log_format=None):
     if log_format is None:
@@ -93,7 +86,6 @@ class PerformanceMonitor:
     
     def record_request(self, response_time: float, error: bool = False, 
                       cache_hit: bool = False, is_parallel: bool = False):
-        """Record request metrics"""
         with self._lock:
             self._metrics['requests'] += 1
             self._metrics['total_time'] += response_time
@@ -111,7 +103,6 @@ class PerformanceMonitor:
                 self._metrics['parallel_requests'] += 1
     
     def get_metrics(self) -> Dict[str, Any]:
-        """Get current metrics"""
         with self._lock:
             uptime = time.time() - self._start_time
             cache_total = self._metrics['cache_hits'] + self._metrics['cache_misses']
@@ -128,7 +119,6 @@ class PerformanceMonitor:
             }
     
     def reset_metrics(self):
-        """Reset all metrics"""
         with self._lock:
             if self.use_multiprocess:
                 self._metrics.clear()
@@ -153,12 +143,10 @@ class PerformanceMonitor:
                 }
             self._start_time = time.time()
 
-# Global performance monitors
 performance_monitor = PerformanceMonitor(use_multiprocess=False)
 multiprocess_performance_monitor = PerformanceMonitor(use_multiprocess=True)
 
 def get_system_status(use_multiprocess: bool = True) -> Dict[str, Any]:
-    """Get comprehensive system status"""
     if use_multiprocess:
         container = get_multiprocess_container()
         monitor = multiprocess_performance_monitor
@@ -196,7 +184,6 @@ def get_system_status(use_multiprocess: bool = True) -> Dict[str, Any]:
     return status
 
 def print_system_status(use_multiprocess: bool = True):
-    """Print formatted system status"""
     status = get_system_status(use_multiprocess)
     
     mode = "MULTIPROCESS" if use_multiprocess else "THREADING"
@@ -213,14 +200,12 @@ def print_system_status(use_multiprocess: bool = True):
     logger.info(f"{'=' * 60}")
 
 def _print_header(mode: str):
-    """Print status header"""
     logger = logging.getLogger("system_status")
     logger.info(f"\n{'=' * 60}")
     logger.info(f"ZORGLUB AI - SYSTEM STATUS ({mode})")
     logger.info(f"{'=' * 60}")
 
 def _print_system_info(mp_info: Dict[str, Any]):
-    """Print system information"""
     logger = logging.getLogger("system_status")
     logger.info("\n SYSTEM INFO:")
     logger.info(f"  CPU Count: {mp_info['cpu_count']}")
@@ -228,7 +213,6 @@ def _print_system_info(mp_info: Dict[str, Any]):
     logger.info(f"  Mode: {'Multiprocessing' if mp_info['use_multiprocess'] else 'Threading'}")
 
 def _print_services_status(services: Dict[str, Any]):
-    """Print services status"""
     logger = logging.getLogger("system_status")
     logger.info("\n SERVICES:")
     logger.info(f"  Initialized: {'ok' if services['initialized'] else 'no'}")
@@ -236,7 +220,6 @@ def _print_services_status(services: Dict[str, Any]):
         logger.info(f"  {service}: {'ok' if health else 'no'}")
 
 def _print_performance_metrics(perf: Dict[str, Any]):
-    """Print performance metrics"""
     logger = logging.getLogger("system_status")
     logger.info("\n PERFORMANCE:")
     logger.info(f"  Requests: {perf['requests']}")
@@ -247,21 +230,18 @@ def _print_performance_metrics(perf: Dict[str, Any]):
     logger.info(f"  Uptime: {perf['uptime_seconds']:.0f}s")
 
 def _print_dependencies_status(dependencies: Dict[str, bool]):
-    """Print dependencies status"""
     logger = logging.getLogger("system_status")
     logger.info("\n DEPENDENCIES:")
     for dep, status_ok in dependencies.items():
         logger.info(f"  {dep}: {'ok' if status_ok else 'no'}")
 
 def _print_resource_usage(res: Dict[str, Any]):
-    """Print resource usage"""
     logger = logging.getLogger("system_status")
     logger.info("\n RESOURCES:")
     logger.info(f"  Registered Resources: {res['registered_resources']}")
     logger.info(f"  Cleanup Callbacks: {res['cleanup_callbacks']}")
 
 def _print_detailed_performance(perf_stats: Dict[str, Any]):
-    """Print detailed performance stats"""
     logger = logging.getLogger("system_status")
     logger.info("\n  DETAILED PERFORMANCE:")
     for service, stats in perf_stats.items():
@@ -269,13 +249,11 @@ def _print_detailed_performance(perf_stats: Dict[str, Any]):
             _print_service_stats(service, stats)
 
 def _print_nested_stats(value_dict: Dict[str, Any]):
-    """Print nested statistics"""
     logger = logging.getLogger("system_status")
     for subkey, subval in value_dict.items():
         logger.info(f"    {subkey}: {subval}")
 
 def _print_service_stats(service: str, stats: Dict[str, Any]):
-    """Print stats for a single service"""
     logger = logging.getLogger("system_status")
     logger.info(f"  {service.upper()}:")
     for key, value in stats.items():
@@ -284,7 +262,6 @@ def _print_service_stats(service: str, stats: Dict[str, Any]):
         else:
             logger.info(f"    {key}: {value}")
 
-# Convenience functions
 def quick_start(use_multiprocess: bool = True) -> bool:
     mode = "multiprocessing" if use_multiprocess else "threading"
     logger = logging.getLogger("quick_start")
@@ -310,20 +287,17 @@ def quick_test(use_multiprocess: bool = True):
     logger.info(f"Testing Zorglub AI services with {mode}...")
     
     try:
-        # Test AI service
         if use_multiprocess:
             ai_client = get_multiprocess_ai_client()
         else:
             ai_client = get_ai_client()
         response = ai_client.ask("Hello, can you respond briefly?", use_cache=False)
         logger.info(f"AI Service: {response[:50]}...")
-        # Test STT service
         if use_multiprocess:
             get_multiprocess_stt_service()
         else:
             get_stt_service()
         logger.info("STT Service: Ready")
-        # Test TTS service
         if use_multiprocess:
             get_multiprocess_tts_service()
         else:
@@ -334,20 +308,16 @@ def quick_test(use_multiprocess: bool = True):
         logger.error(f"\n Service test failed: {e}")
 
 def benchmark_performance():
-    """Benchmark performance comparison antara threading vs multiprocessing"""
     logger = logging.getLogger("benchmark_performance")
     logger.info("Starting performance benchmark...")
-    # Test dengan threading
     logger.info("\n Testing with Threading...")
     start_time = time.time()
     quick_test(use_multiprocess=False)
     threading_time = time.time() - start_time
-    # Test dengan multiprocessing
     logger.info("\n Testing with Multiprocessing...")
     start_time = time.time()
     quick_test(use_multiprocess=True)
     multiprocess_time = time.time() - start_time
-    # Compare results
     logger.info("\n BENCHMARK RESULTS:")
     logger.info(f"  Threading Time: {threading_time:.2f}s")
     logger.info(f"  Multiprocessing Time: {multiprocess_time:.2f}s")
@@ -358,9 +328,7 @@ def benchmark_performance():
         degradation = ((multiprocess_time - threading_time) / threading_time) * 100
         logger.info(" Multiprocessing is %.1f%% slower", degradation)
 
-# Export main components
 __all__ = [
-    # Container (both)
     'get_container',
     'get_multiprocess_container',
     'initialize_services',
@@ -369,45 +337,31 @@ __all__ = [
     'shutdown_multiprocess_services',
     'managed_services',
     'managed_multiprocess_services',
-    
-    # Configuration
     'get_config',
     'EnhancedConfig',
     'OllamaConfig',
     'SpeechConfig',
     'AudioConfig',
     'PerformanceConfig',
-    
-    # Services (regular)
     'get_ai_client',
     'get_stt_service',
     'get_tts_service',
-    
-    # Services (multiprocess)
     'get_multiprocess_ai_client',
     'get_multiprocess_stt_service',
     'get_multiprocess_tts_service',
-    
-    # Adapters
     'AIServiceAdapter',
     'SpeechToTextAdapter',
     'TextToSpeechAdapter',
     'get_enhanced_ai_service',
     'get_enhanced_stt_service',
     'get_enhanced_tts_service',
-    
-    # Monitoring
     'performance_monitor',
     'multiprocess_performance_monitor',
     'get_system_status',
     'print_system_status',
-    
-    # Convenience
     'quick_start',
     'quick_test',
     'benchmark_performance',
-    
-    # Resource management
     'resource_manager',
     'DependencyValidator'
 ]

@@ -156,9 +156,7 @@ class ConversationManager:
             logger.error(f"Error loading conversation: {e}")
     
     def get_conversation_history(self) -> List[Message]:
-        """Get the complete conversation history"""
         return self.conversation_history.copy()
     
     def get_recent_history(self, count: int = 5) -> List[Message]:
-        """Get recent conversation history"""
         return self.conversation_history[-count:] if count > 0 else []

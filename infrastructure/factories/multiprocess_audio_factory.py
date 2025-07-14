@@ -34,7 +34,6 @@ def _synthesize_gtts_worker(text: str, config: Dict, worker_id: int) -> tuple:
         
         tts = gTTS(text, lang=config['tts_language'])
         
-        # Create temp file
         temp_file = tempfile.NamedTemporaryFile(
             delete=False,
             suffix='.mp3',
@@ -71,7 +70,6 @@ def _synthesize_edge_worker(text: str, config: Dict, worker_id: int) -> tuple:
             communicate = edge_tts.Communicate(text, voice)
             await communicate.save(temp_path)
         
-        # Run in event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_synthesize())
@@ -88,7 +86,6 @@ def play_audio_worker(args: tuple) -> tuple:
     audio_file, player_cmd, worker_id = args
     
     try:
-        # Play audio
         result = subprocess.run(
             player_cmd + [audio_file],
             check=False,
@@ -109,20 +106,17 @@ def play_audio_worker(args: tuple) -> tuple:
 class MultiprocessTextSegmenter:    
     @staticmethod
     def split_text_parallel(texts: List[str], max_length: int = 200, max_workers: int = 2) -> List[List[str]]:
-        """Split multiple texts secara parallel"""
         if not texts:
             return []
         
         if len(texts) == 1:
             return [MultiprocessTextSegmenter.split_text_single(texts[0], max_length)]
         
-        # Process in parallel for large batches
         if len(texts) > 4:
             with ProcessPool(
                 max_workers=min(max_workers, len(texts)),
                 initializer=process_worker_initializer
             ) as pool:
-                # Submit tasks
                 futures = {}
                 for i, text in enumerate(texts):
                     future = pool.submit(
@@ -131,7 +125,6 @@ class MultiprocessTextSegmenter:
                     )
                     futures[future] = i
                 
-                # Collect results
                 results = [None] * len(texts)
                 for future in as_completed(futures.keys()):
                     index = futures[future]
@@ -139,11 +132,10 @@ class MultiprocessTextSegmenter:
                         results[index] = future.result()
                     except Exception as e:
                         print(f"Text segmentation failed for text {index}: {e}")
-                        results[index] = [texts[index]]  # Fallback
+                        results[index] = [texts[index]]
                 
                 return results
         else:
-            # Sequential untuk small batches
             return [
                 MultiprocessTextSegmenter.split_text_single(text, max_length)
                 for text in texts
@@ -154,10 +146,8 @@ class MultiprocessTextSegmenter:
         if len(text) <= max_length:
             return [text]
         
-        # Clean text
         text = re.sub(r'\s+', ' ', text.strip())
         
-        # Split by sentences
         sentences = re.split(r'[.!?]+', text)
         
         return MultiprocessTextSegmenter._process_sentences(sentences, max_length)
@@ -173,7 +163,6 @@ class MultiprocessTextSegmenter:
                 continue
             
             if len(sentence) > max_length:
-                # Handle long sentences
                 segments.extend(
                     MultiprocessTextSegmenter._handle_long_sentence(
                         sentence, current_segment, max_length
@@ -181,7 +170,6 @@ class MultiprocessTextSegmenter:
                 )
                 current_segment = ""
             else:
-                # Handle normal sentences
                 current_segment = MultiprocessTextSegmenter._handle_normal_sentence(
                     sentence, current_segment, segments, max_length
                 )
@@ -198,7 +186,6 @@ class MultiprocessTextSegmenter:
         if current_segment:
             segments.append(current_segment.strip())
         
-        # Split long sentence
         long_segments = MultiprocessTextSegmenter._split_long_sentence(sentence, max_length)
         segments.extend(long_segments)
         
@@ -241,7 +228,6 @@ class MultiprocessTTSEngineManager:
         self.config = Config.get_speech_settings()
         self.max_workers = max_workers or min(4, mp.cpu_count())
         
-        # Shared state
         self._manager = mp.Manager()
         self._temp_files = self._manager.list()
         self._stats = self._manager.dict({
@@ -256,13 +242,11 @@ class MultiprocessTTSEngineManager:
         self._stats['syntheses'] += 1
         
         try:
-            # Try primary engine
             result = self._synthesize_with_engine(text, engine)
             if result:
                 self._stats['successful_syntheses'] += 1
                 return result
             
-            # Try fallback
             fallback = self.config.get('fallback_engine', 'gtts')
             if fallback != engine:
                 result = self._synthesize_with_engine(text, fallback)
@@ -286,7 +270,6 @@ class MultiprocessTTSEngineManager:
         
         self._stats['syntheses'] += len(texts)
         
-        # Prepare worker args
         worker_args = [
             (text, engine, self.config, i)
             for i, text in enumerate(texts)
@@ -298,13 +281,11 @@ class MultiprocessTTSEngineManager:
             max_workers=min(self.max_workers, len(texts)),
             initializer=process_worker_initializer
         ) as pool:
-            # Submit synthesis tasks
             futures = {}
             for args in worker_args:
                 future = pool.submit(synthesize_text_worker, args)
-                futures[future] = args[3]  # worker_id
+                futures[future] = args[3]
             
-            # Collect results
             for future in as_completed(futures.keys(), timeout=60):
                 worker_id = futures[future]
                 try:
@@ -318,7 +299,6 @@ class MultiprocessTTSEngineManager:
                         self._stats['successful_syntheses'] += 1
                         results[worker_id] = audio_file
                         
-                        # Track temp file
                         if audio_file:
                             self._temp_files.append(audio_file)
                 
@@ -368,10 +348,8 @@ class MultiprocessOptimizedTTS:
         self.engine_manager = MultiprocessTTSEngineManager(max_workers)
         self.text_segmenter = MultiprocessTextSegmenter()
         
-        # Audio playback queue
         self.audio_queue = ProcessSafeQueue(maxsize=50)
         
-        # Stats
         self._manager = mp.Manager()
         self._stats = self._manager.dict({
             'speak_requests': 0,
@@ -379,7 +357,6 @@ class MultiprocessOptimizedTTS:
             'failed_speaks': 0
         })
         
-        # Register cleanup
         resource_manager.register_resource(
             self.engine_manager,
             self.engine_manager.cleanup_temp_files
@@ -392,17 +369,14 @@ class MultiprocessOptimizedTTS:
         self._stats['speak_requests'] += 1
         
         try:
-            # Clean dan segment text
             segments = self.text_segmenter.split_text_single(
                 text.strip(),
                 self.config.get('max_segment_length', 200)
             )
             
             if len(segments) == 1:
-                # Single segment
                 success = self._speak_single_segment(segments[0], engine)
             else:
-                # Multiple segments
                 if parallel_mode and len(segments) > 1:
                     success = self._speak_segments_parallel(segments, engine)
                 else:
@@ -426,14 +400,12 @@ class MultiprocessOptimizedTTS:
         
         self._stats['speak_requests'] += len(texts)
         
-        # Segment all texts in parallel
         all_segments = self.text_segmenter.split_text_parallel(
             texts,
             self.config.get('max_segment_length', 200),
             self.max_workers
         )
         
-        # Flatten segments dengan index tracking
         flat_segments = []
         segment_to_text_map = []
         
@@ -442,10 +414,8 @@ class MultiprocessOptimizedTTS:
                 flat_segments.append(segment)
                 segment_to_text_map.append(text_idx)
         
-        # Synthesize all segments in parallel
         audio_files = self.engine_manager.synthesize_batch(flat_segments, engine)
         
-        # Play audio files per text
         results = []
         current_text_idx = 0
         current_text_files = []
@@ -454,24 +424,20 @@ class MultiprocessOptimizedTTS:
             text_idx = segment_to_text_map[i]
             
             if text_idx != current_text_idx:
-                # Process previous text
                 if current_text_files:
                     success = self._play_audio_files_sequential(current_text_files)
                     results.append(success)
                 
-                # Start new text
                 current_text_idx = text_idx
                 current_text_files = []
             
             if audio_file:
                 current_text_files.append(audio_file)
         
-        # Process last text
         if current_text_files:
             success = self._play_audio_files_sequential(current_text_files)
             results.append(success)
         
-        # Update stats
         successful_count = sum(results)
         self._stats['successful_speaks'] += successful_count
         self._stats['failed_speaks'] += len(texts) - successful_count
@@ -493,7 +459,6 @@ class MultiprocessOptimizedTTS:
                 if self._play_audio_file(audio_file):
                     success_count += 1
                 
-                # Natural pause between segments
                 pause = self.config.get('pause_between_segments', 0.3)
                 if pause > 0 and i < len(segments) - 1:
                     time.sleep(pause)
@@ -501,10 +466,8 @@ class MultiprocessOptimizedTTS:
         return success_count > 0
     
     def _speak_segments_parallel(self, segments: List[str], engine: str = None) -> bool:
-        # Synthesize all segments in parallel
         audio_files = self.engine_manager.synthesize_batch(segments, engine)
         
-        # Play sequentially
         return self._play_audio_files_sequential(audio_files)
     
     def _play_audio_files_sequential(self, audio_files: List[Optional[str]]) -> bool:
@@ -514,7 +477,6 @@ class MultiprocessOptimizedTTS:
             if audio_file and self._play_audio_file(audio_file):
                 success_count += 1
                 
-                # Natural pause
                 pause = self.config.get('pause_between_segments', 0.3)
                 if pause > 0 and i < len(audio_files) - 1:
                     time.sleep(pause)
@@ -538,7 +500,6 @@ class MultiprocessOptimizedTTS:
             print(f"Error playing audio: {e}")
             return False
         finally:
-            # Cleanup
             try:
                 if os.path.exists(audio_file):
                     os.remove(audio_file)
@@ -564,14 +525,12 @@ class MultiprocessAudioServiceFactory(ServiceFactory[MultiprocessOptimizedTTS], 
     def create(self, max_workers: Optional[int] = None, **kwargs) -> MultiprocessOptimizedTTS:
         service = MultiprocessOptimizedTTS(max_workers=max_workers)
         
-        # Register untuk cleanup
         resource_manager.register_resource(service)
         
         return service
     
     def validate_dependencies(self) -> bool:
         try:
-            # Check mpv
             subprocess.run(
                 ['mpv', '--version'],
                 capture_output=True,
@@ -579,7 +538,6 @@ class MultiprocessAudioServiceFactory(ServiceFactory[MultiprocessOptimizedTTS], 
                 timeout=5
             )
             
-            # Check TTS dependencies
             try:
                 import gtts
                 return True
@@ -591,7 +549,6 @@ class MultiprocessAudioServiceFactory(ServiceFactory[MultiprocessOptimizedTTS], 
         except Exception:
             return False
 
-# Global instances
 _tts_service: Optional[MultiprocessOptimizedTTS] = None
 _factory: Optional[MultiprocessAudioServiceFactory] = None
 

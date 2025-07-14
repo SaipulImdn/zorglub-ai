@@ -19,7 +19,6 @@ def make_ollama_request(request_data: Tuple[str, Dict, Dict]) -> Tuple[str, str,
     url, payload, config = request_data
     
     try:
-        # Create session dengan retry strategy
         session = requests.Session()
         retry_strategy = Retry(
             total=config.get('max_retries', 3),
@@ -43,7 +42,6 @@ def make_ollama_request(request_data: Tuple[str, Dict, Dict]) -> Tuple[str, str,
         
         data = response.json()
         
-        # Extract content
         if 'message' in data and 'content' in data['message']:
             content = data['message']['content']
         elif 'response' in data:
@@ -70,7 +68,6 @@ class MultiprocessResponseCache:
         self._lock = self._manager.Lock()
     
     def _generate_key(self, messages: List[Dict], options: Dict = None) -> str:
-        """Generate cache key"""
         key_data = {
             'messages': messages,
             'options': options or {}
@@ -79,7 +76,6 @@ class MultiprocessResponseCache:
         return hashlib.md5(key_string.encode()).hexdigest()
     
     def get(self, messages: List[Dict], options: Dict = None) -> Optional[str]:
-        """Get cached response"""
         key = self._generate_key(messages, options)
         
         with self._lock:
@@ -88,7 +84,6 @@ class MultiprocessResponseCache:
                 if time.time() - timestamp < self._ttl:
                     return self._cache[key]
                 else:
-                    # Remove expired entry
                     del self._cache[key]
                     if key in self._timestamps:
                         del self._timestamps[key]
@@ -96,12 +91,10 @@ class MultiprocessResponseCache:
         return None
     
     def set(self, messages: List[Dict], response: str, options: Dict = None):
-        """Set cached response"""
         key = self._generate_key(messages, options)
         current_time = time.time()
         
         with self._lock:
-            # Remove oldest entries if cache is full
             if len(self._cache) >= self._max_size:
                 oldest_key = min(self._timestamps.keys(), 
                                key=lambda k: self._timestamps[k])
@@ -112,7 +105,6 @@ class MultiprocessResponseCache:
             self._timestamps[key] = current_time
     
     def clear(self):
-        """Clear cache"""
         with self._lock:
             self._cache.clear()
             self._timestamps.clear()
@@ -123,7 +115,6 @@ class MultiprocessOllamaClient:
         self.max_workers = max_workers or min(4, mp.cpu_count())
         self.cache = MultiprocessResponseCache()
         
-        # Stats
         self._manager = mp.Manager()
         self._stats = self._manager.dict({
             'requests': 0,
@@ -132,25 +123,20 @@ class MultiprocessOllamaClient:
             'parallel_requests': 0
         })
         
-        # Request queue untuk batch processing
         self.request_queue = ProcessSafeQueue(maxsize=100)
         self.response_queue = ProcessSafeQueue(maxsize=100)
     
     def ask(self, prompt: str, use_cache: bool = True) -> str:
-        """Ask AI dengan single prompt"""
         messages = [{"role": "user", "content": prompt}]
         return self._make_request(messages, use_cache=use_cache)
     
     def ask_with_context(self, messages: List[Dict], options: Dict = None, use_cache: bool = True) -> str:
-        """Ask AI dengan conversation context"""
         return self._make_request(messages, options=options, use_cache=use_cache)
     
     def ask_batch(self, prompts: List[str], use_cache: bool = True) -> List[str]:
-        """Process multiple prompts secara parallel"""
         if not prompts:
             return []
         
-        # Convert prompts to messages
         batch_messages = [
             [{"role": "user", "content": prompt}] 
             for prompt in prompts
@@ -159,17 +145,14 @@ class MultiprocessOllamaClient:
         return self._make_batch_requests(batch_messages, use_cache=use_cache)
     
     def _make_request(self, messages: List[Dict], options: Dict = None, use_cache: bool = True) -> str:
-        """Make single request"""
         self._stats['requests'] += 1
         
-        # Check cache first
         if use_cache:
             cached_response = self.cache.get(messages, options)
             if cached_response:
                 self._stats['cache_hits'] += 1
                 return cached_response
         
-        # Prepare request data
         payload = {
             "model": self.config['model'],
             "messages": messages,
@@ -181,7 +164,6 @@ class MultiprocessOllamaClient:
         
         request_data = (self.config['url'], payload, self.config)
         
-        # Make request
         try:
             content, error, is_error = make_ollama_request(request_data)
             
@@ -189,7 +171,6 @@ class MultiprocessOllamaClient:
                 self._stats['errors'] += 1
                 return error
             
-            # Cache successful response
             if use_cache and content:
                 self.cache.set(messages, content, options)
             
@@ -201,30 +182,25 @@ class MultiprocessOllamaClient:
     
     def _make_batch_requests(self, batch_messages: List[List[Dict]], 
                            options: Dict = None, use_cache: bool = True) -> List[str]:
-        """Make multiple requests secara parallel"""
         if not batch_messages:
             return []
         
         self._stats['parallel_requests'] += 1
         
-        # Check cache dan prepare uncached requests
         cached_responses, uncached_requests = self._process_cache_for_batch(
             batch_messages, options, use_cache
         )
         
-        # Process uncached requests
         new_results = self._execute_parallel_requests(
             uncached_requests, batch_messages, options, use_cache
         )
         
-        # Combine results
         return self._combine_batch_results(
             batch_messages, cached_responses, new_results
         )
     
     def _process_cache_for_batch(self, batch_messages: List[List[Dict]], 
                                options: Dict = None, use_cache: bool = True) -> Tuple[Dict[int, str], List[Tuple[int, List[Dict]]]]:
-        """Process cache lookup untuk batch requests"""
         cached_responses = {}
         uncached_requests = []
         
@@ -244,16 +220,13 @@ class MultiprocessOllamaClient:
     def _execute_parallel_requests(self, uncached_requests: List[Tuple[int, List[Dict]]], 
                                  batch_messages: List[List[Dict]], options: Dict = None, 
                                  use_cache: bool = True) -> Dict[int, str]:
-        """Execute uncached requests secara parallel"""
         results = {}
         
         if not uncached_requests:
             return results
         
-        # Prepare request data
         request_data_list = self._prepare_request_data(uncached_requests, options)
         
-        # Execute requests
         with ProcessPool(
             max_workers=min(self.max_workers, len(request_data_list)),
             initializer=process_worker_initializer
@@ -267,7 +240,6 @@ class MultiprocessOllamaClient:
     
     def _prepare_request_data(self, uncached_requests: List[Tuple[int, List[Dict]]], 
                             options: Dict = None) -> List[Tuple[str, Dict, Dict]]:
-        """Prepare request data untuk parallel execution"""
         request_data_list = []
         
         for _, messages in uncached_requests:
@@ -289,16 +261,13 @@ class MultiprocessOllamaClient:
                                    request_data_list: List[Tuple[str, Dict, Dict]], 
                                    batch_messages: List[List[Dict]], 
                                    options: Dict = None, use_cache: bool = True) -> Dict[int, str]:
-        """Submit requests dan collect results"""
         results = {}
         
-        # Submit all requests
         futures = {}
         for idx, (request_idx, _) in enumerate(uncached_requests):
             future = pool.submit(make_ollama_request, request_data_list[idx])
             futures[future] = request_idx
         
-        # Collect results
         for future in as_completed(futures.keys(), timeout=self.config['timeout'] + 10):
             request_idx = futures[future]
             try:
@@ -310,7 +279,6 @@ class MultiprocessOllamaClient:
                 else:
                     results[request_idx] = content
                     
-                    # Cache successful response
                     if use_cache and content:
                         messages = batch_messages[request_idx]
                         self.cache.set(messages, content, options)
@@ -324,7 +292,6 @@ class MultiprocessOllamaClient:
     def _combine_batch_results(self, batch_messages: List[List[Dict]], 
                              cached_responses: Dict[int, str], 
                              new_results: Dict[int, str]) -> List[str]:
-        """Combine cached dan new results"""
         final_results = []
         
         for i in range(len(batch_messages)):
@@ -338,7 +305,6 @@ class MultiprocessOllamaClient:
         return final_results
     
     def get_stats(self) -> Dict:
-        """Get client statistics"""
         stats_dict = dict(self._stats)
         total_requests = max(stats_dict['requests'], 1)
         cache_hit_rate = (stats_dict['cache_hits'] / total_requests) * 100
@@ -351,30 +317,21 @@ class MultiprocessOllamaClient:
         }
     
     def clear_cache(self):
-        """Clear response cache"""
         self.cache.clear()
     
     def shutdown(self):
-        """Shutdown client dan cleanup resources"""
         try:
             self.clear_cache()
         except Exception as e:
             print(f"Error during shutdown: {e}")
 
 class MultiprocessAIServiceFactory(ServiceFactory[MultiprocessOllamaClient], MultiprocessSingletonMixin):
-    """Factory untuk multiprocess AI service creation"""
-    
     def create(self, max_workers: Optional[int] = None, **kwargs) -> MultiprocessOllamaClient:
-        """Create multiprocess Ollama client"""
         client = MultiprocessOllamaClient(max_workers=max_workers)
-        
-        # Register untuk cleanup
         resource_manager.register_resource(client, client.shutdown)
-        
         return client
     
     def validate_dependencies(self) -> bool:
-        """Validate Ollama dependencies"""
         try:
             session = requests.Session()
             response = session.get(
@@ -387,12 +344,10 @@ class MultiprocessAIServiceFactory(ServiceFactory[MultiprocessOllamaClient], Mul
         except Exception:
             return False
 
-# Global instances
 _ai_client: Optional[MultiprocessOllamaClient] = None
 _factory: Optional[MultiprocessAIServiceFactory] = None
 
 def get_multiprocess_ai_client(max_workers: Optional[int] = None) -> MultiprocessOllamaClient:
-    """Get global multiprocess AI client instance"""
     global _ai_client, _factory
     
     if _ai_client is None:
@@ -403,7 +358,6 @@ def get_multiprocess_ai_client(max_workers: Optional[int] = None) -> Multiproces
     return _ai_client
 
 def shutdown_ai_client():
-    """Shutdown global AI client"""
     global _ai_client
     if _ai_client:
         _ai_client.shutdown()

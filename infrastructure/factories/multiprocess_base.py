@@ -15,12 +15,10 @@ T = TypeVar('T')
 class ServiceFactory(ABC, Generic[T]):
     @abstractmethod
     def create(self, **kwargs) -> T:
-        """Create service instance"""
         pass
     
     @abstractmethod
     def validate_dependencies(self) -> bool:
-        """Validate required dependencies"""
         pass
 
 class MultiprocessSingletonMixin:
@@ -87,11 +85,8 @@ class ProcessPool:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._executor:
-            # Cancel active futures
             for future in self._active_futures:
                 future.cancel()
-            
-            # Shutdown executor
             self._executor.shutdown(wait=True)
             self._executor = None
             self._active_futures.clear()
@@ -99,7 +94,6 @@ class ProcessPool:
     def submit(self, fn, *args, **kwargs):
         if not self._executor:
             raise RuntimeError("ProcessPool not initialized. Use with context manager.")
-        
         future = self._executor.submit(fn, *args, **kwargs)
         self._active_futures.append(future)
         return future
@@ -107,7 +101,6 @@ class ProcessPool:
     def map(self, fn, iterable, timeout=None, chunksize=1):
         if not self._executor:
             raise RuntimeError("ProcessPool not initialized. Use with context manager.")
-        
         return self._executor.map(fn, iterable, timeout=timeout, chunksize=chunksize)
     
     def as_completed(self, timeout=None):
@@ -144,16 +137,13 @@ class ProcessSafeResourceManager:
         self._process_registry = self._manager.dict()
         
     def register_resource(self, resource: Any, cleanup_func: Optional[callable] = None):
-        # Store resource info instead of object directly (for pickling)
         resource_info = {
             'type': type(resource).__name__,
             'id': id(resource),
             'pid': os.getpid()
         }
         self._resources.append(resource_info)
-        
         if cleanup_func:
-            # Store cleanup function info
             cleanup_info = {
                 'func_name': cleanup_func.__name__ if hasattr(cleanup_func, '__name__') else str(cleanup_func),
                 'resource_id': id(resource)
@@ -169,26 +159,18 @@ class ProcessSafeResourceManager:
     
     def cleanup_all(self):
         current_pid = os.getpid()
-        
-        # Cleanup resources dari current process
         for callback_info in self._cleanup_callbacks:
             try:
-                # Execute cleanup - in real implementation, you'd need to 
-                # maintain actual function references per process
                 print(f"Cleaning up resource: {callback_info}")
             except Exception as e:
                 print(f"Error during cleanup: {e}")
-        
-        # Terminate registered processes
         for process_name, process_info in self._process_registry.items():
             if process_info['is_alive']:
                 try:
-                    # Send terminate signal
                     if process_info['pid'] != current_pid:
                         os.kill(process_info['pid'], signal.SIGTERM)
                 except (ProcessLookupError, PermissionError):
                     pass
-        
         self._resources[:] = []
         self._cleanup_callbacks[:] = []
         self._process_registry.clear()
@@ -206,11 +188,8 @@ class ProcessSafeResourceManager:
                     print(f"Error during cleanup: {e}")
 
 def process_worker_initializer():
-    # Setup signal handlers
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.default_int_handler)
-    
-    # Set process title
     try:
         import setproctitle
         setproctitle.setproctitle("zorglub-worker")
@@ -241,15 +220,11 @@ class DependencyValidator:
     @staticmethod
     def validate_all_parallel() -> Dict[str, bool]:
         dependencies = ['ai_service', 'speech_service', 'audio_service']
-        
         with ProcessPool(max_workers=3, initializer=process_worker_initializer) as pool:
-            # Submit validation tasks
             futures = {
                 dep: pool.submit(DependencyValidator.validate_dependency, dep)
                 for dep in dependencies
             }
-            
-            # Collect results
             results = {}
             for dep, future in futures.items():
                 try:
@@ -257,7 +232,6 @@ class DependencyValidator:
                 except Exception as e:
                     print(f"Validation failed for {dep}: {e}")
                     results[dep] = False
-            
             return results
     
     @staticmethod
@@ -266,14 +240,10 @@ class DependencyValidator:
             return DependencyValidator.validate_all_parallel()
         except Exception as e:
             print(f"Parallel validation failed, falling back to sequential: {e}")
-            
-            # Fallback to sequential validation
             results = {}
             dependencies = ['ai_service', 'speech_service', 'audio_service']
-            
             for dep in dependencies:
                 results[dep] = DependencyValidator.validate_dependency(dep)
-            
             return results
     
     @staticmethod
@@ -281,11 +251,9 @@ class DependencyValidator:
         results = DependencyValidator.validate_all()
         return [key for key, value in results.items() if not value]
 
-# Global instances
 shared_memory_manager = SharedMemoryManager()
 resource_manager = ProcessSafeResourceManager()
 
-# Process pool configuration
 DEFAULT_POOL_CONFIG = {
     'max_workers': mp.cpu_count(),
     'initializer': process_worker_initializer,

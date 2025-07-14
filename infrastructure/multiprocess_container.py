@@ -28,12 +28,9 @@ class MultiprocessServiceRegistry:
         self._health_status = self._manager.dict()
         self._process_pool: Optional[ProcessPool] = None
         
-        # Register built-in factories
         self._register_builtin_factories()
     
     def _register_builtin_factories(self):
-        # Note: We store factory names, not the actual callables
-        # because Manager doesn't handle complex objects well
         factory_mappings = {
             'ai_service': 'multiprocess_ai_client',
             'stt_service': 'multiprocess_stt_service', 
@@ -56,13 +53,12 @@ class MultiprocessServiceRegistry:
                 
                 factory_name = self._factories[service_name]
                 service = self._create_service(factory_name, **kwargs)
-                self._services[service_name] = service_name  # Store reference
+                self._services[service_name] = service_name
                 
                 resource_manager.register_resource(service)
                 
                 return service
             else:
-                # Return actual service (stored globally)
                 return self._get_actual_service(service_name, **kwargs)
     
     def _create_service(self, factory_name: str, **kwargs) -> Any:
@@ -109,7 +105,6 @@ class MultiprocessServiceRegistry:
     
     def clear_services(self):
         with self._lock:
-            # Shutdown individual services
             shutdown_ai_client()
             shutdown_stt_service()
             shutdown_tts_service()
@@ -127,7 +122,6 @@ class MultiprocessOptimizedContainer:
         self._lock = self._manager.Lock()
         self._worker_processes = self._manager.list()
         
-        # Setup signal handlers
         self._setup_signal_handlers()
     
     def _setup_signal_handlers(self):
@@ -146,7 +140,6 @@ class MultiprocessOptimizedContainer:
             
             print("Initializing Zorglub AI services with multiprocessing...")
             
-            # Validate dependencies
             if validate_parallel:
                 validation_results = DependencyValidator.validate_all_parallel()
             else:
@@ -159,10 +152,8 @@ class MultiprocessOptimizedContainer:
                 print("Some features may not work properly.")
                 return False
             
-            # Run startup tasks
             self._run_startup_tasks()
             
-            # Initialize shared memory
             shared_memory_manager.create_dict('system_stats', {
                 'start_time': time.time(),
                 'requests_processed': 0,
@@ -196,21 +187,17 @@ class MultiprocessOptimizedContainer:
             
             print("Shutting down multiprocess services...")
             
-            # Run shutdown tasks
             for task in self._shutdown_tasks:
                 try:
                     task()
                 except Exception as e:
                     print(f"Shutdown task failed: {e}")
             
-            # Shutdown services
             self.registry.clear_services()
             
-            # Cleanup resources
             resource_manager.cleanup_all()
             shared_memory_manager.cleanup()
             
-            # Terminate worker processes
             self._terminate_worker_processes()
             
             self._is_initialized = False
@@ -244,19 +231,15 @@ class MultiprocessOptimizedContainer:
             self.shutdown()
 
     def get_ai_service(self, max_workers: Optional[int] = None):
-        """Get multiprocess AI service instance"""
         return self.registry.get_service('ai_service', max_workers=max_workers)
     
     def get_speech_input(self, max_workers: Optional[int] = None):
-        """Get multiprocess speech input service"""
         return self.registry.get_service('stt_service', max_workers=max_workers)
     
     def get_speech_output(self, max_workers: Optional[int] = None):
-        """Get multiprocess speech output service"""
         return self.registry.get_service('tts_service', max_workers=max_workers)
     
     def get_voice_assistant(self):
-        """Get voice assistant dengan multiprocess auto-wiring"""
         from core.use_cases.voice_assistant import VoiceAssistant
         from infrastructure.adapters import (
             AIServiceAdapter, SpeechToTextAdapter, TextToSpeechAdapter
@@ -273,7 +256,6 @@ class MultiprocessOptimizedContainer:
         )
     
     def get_health_status(self) -> Dict[str, Any]:
-        """Get comprehensive health status"""
         system_stats = shared_memory_manager.get_object('system_stats')
         
         health_data = {
@@ -296,25 +278,21 @@ class MultiprocessOptimizedContainer:
         return health_data
     
     def get_performance_stats(self) -> Dict[str, Any]:
-        """Get detailed performance statistics"""
         SERVICE_NOT_AVAILABLE = 'Service not available'
         stats = {}
         
-        # AI service stats
         try:
             ai_client = get_multiprocess_ai_client()
             stats['ai_service'] = ai_client.get_stats()
         except Exception:
             stats['ai_service'] = {'error': SERVICE_NOT_AVAILABLE}
         
-        # STT service stats
         try:
             stt_service = get_multiprocess_stt_service()
             stats['stt_service'] = stt_service.get_stats()
         except Exception:
             stats['stt_service'] = {'error': SERVICE_NOT_AVAILABLE}
         
-        # TTS service stats
         try:
             tts_service = get_multiprocess_tts_service()
             stats['tts_service'] = tts_service.get_stats()
@@ -323,11 +301,9 @@ class MultiprocessOptimizedContainer:
         
         return stats
 
-# Global container instance
 _container: Optional[MultiprocessOptimizedContainer] = None
 
 def get_multiprocess_container(max_workers: Optional[int] = None) -> MultiprocessOptimizedContainer:
-    """Get global multiprocess container instance"""
     global _container
     
     if _container is None:
@@ -336,18 +312,15 @@ def get_multiprocess_container(max_workers: Optional[int] = None) -> Multiproces
     return _container
 
 def initialize_multiprocess_services(max_workers: Optional[int] = None, validate_parallel: bool = True) -> bool:
-    """Initialize semua multiprocess services"""
     container = get_multiprocess_container(max_workers)
     return container.initialize(validate_parallel=validate_parallel)
 
 def shutdown_multiprocess_services():
-    """Shutdown semua multiprocess services"""
     container = get_multiprocess_container()
     container.shutdown()
 
 @contextmanager
 def managed_multiprocess_services(max_workers: Optional[int] = None):
-    """Context manager untuk multiprocess service lifecycle"""
     container = get_multiprocess_container(max_workers)
     with container.managed_lifecycle():
         yield container

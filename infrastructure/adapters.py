@@ -6,12 +6,10 @@ from core.interfaces.speech_input import SpeechInputInterface
 from core.interfaces.speech_output import SpeechOutputInterface
 from core.conversation_manager import ConversationManager
 
-# Import both regular dan multiprocess factories
 from .factories.ai_factory import get_ai_client
 from .factories.speech_factory import get_stt_service
 from .factories.audio_factory import get_tts_service
 
-# Import multiprocess factories
 from .factories.multiprocess_ai_factory import get_multiprocess_ai_client
 from .factories.multiprocess_speech_factory import get_multiprocess_stt_service
 from .factories.multiprocess_audio_factory import get_multiprocess_tts_service
@@ -45,46 +43,31 @@ class AIServiceAdapter(AIServiceInterface):
         return self.client.ask(prompt)
     
     def ask_with_context(self, prompt: str, conversation_manager: ConversationManager) -> str:
-        # Get context-enhanced prompt
         context_prompt = conversation_manager.get_context_prompt(prompt)
-        
-        # Convert context to messages format
         messages = [{"role": "user", "content": context_prompt}]
-        
-        # Add conversation history untuk better context
         history = conversation_manager.get_conversation_history()
         if history:
             messages = []
-            for msg in history[-5:]:  # Last 5 messages untuk context
+            for msg in history[-5:]:
                 role = "user" if msg.role == "user" else "assistant"
                 messages.append({"role": role, "content": msg.content})
-            
-            # Add current prompt
             messages.append({"role": "user", "content": prompt})
-        
-        # Enhanced options untuk conversational AI
         options = {
             "temperature": 0.7,
             "top_p": 0.9,
             "num_ctx": 4096,
             "repeat_penalty": 1.1
         }
-        
-        # Get AI response
         response = self.client.ask_with_context(messages, options=options)
-        
-        # Add to conversation history
         context_tags = conversation_manager._detect_context(prompt)
         conversation_manager.add_message('user', prompt, context_tags)
         conversation_manager.add_message('assistant', response)
-        
         return response
     
     def ask_batch(self, prompts: list, use_cache: bool = True) -> list:
         if hasattr(self.client, 'ask_batch'):
             return self.client.ask_batch(prompts, use_cache=use_cache)
         else:
-            # Fallback untuk regular client
             return [self.ask(prompt) for prompt in prompts]
 
 class SpeechToTextAdapter(SpeechInputInterface):
@@ -166,41 +149,29 @@ class TextToSpeechAdapter(SpeechOutputInterface):
         else:
             return [self.speak(text, engine) for text in texts]
 
-# Backward compatibility functions
 def get_enhanced_ai_service(use_multiprocess: bool = True) -> AIServiceAdapter:
-    """Get enhanced AI service adapter"""
     return AIServiceAdapter(use_multiprocess=use_multiprocess)
 
 def get_enhanced_stt_service(use_multiprocess: bool = True) -> SpeechToTextAdapter:
-    """Get enhanced STT service adapter"""
     return SpeechToTextAdapter(use_multiprocess=use_multiprocess)
 
 def get_enhanced_tts_service(use_multiprocess: bool = True) -> TextToSpeechAdapter:
-    """Get enhanced TTS service adapter"""
     return TextToSpeechAdapter(use_multiprocess=use_multiprocess)
 
 def patch_original_interfaces():
     from core.interfaces import ai_service, speech_input, speech_output
-    
-    # Replace dengan enhanced adapters
     ai_service.AIService = lambda: AIServiceAdapter(use_multiprocess=True)
     speech_input.SpeechToText = lambda: SpeechToTextAdapter(use_multiprocess=True)
     speech_output.TextToSpeech = lambda: TextToSpeechAdapter(use_multiprocess=True)
-    
     logging.getLogger(__name__).info("Patched interfaces dengan enhanced multiprocess implementations")
 
-# Auto-patch saat module di-import
 patch_original_interfaces()
 
-# Convenience functions for getting enhanced services
 def get_enhanced_ai_service(use_multiprocess: bool = True) -> AIServiceAdapter:
-    """Get enhanced AI service adapter"""
     return AIServiceAdapter(use_multiprocess=use_multiprocess)
 
 def get_enhanced_stt_service(use_multiprocess: bool = True) -> SpeechToTextAdapter:
-    """Get enhanced STT service adapter"""
     return SpeechToTextAdapter(use_multiprocess=use_multiprocess)
 
 def get_enhanced_tts_service(use_multiprocess: bool = True) -> TextToSpeechAdapter:
-    """Get enhanced TTS service adapter"""
     return TextToSpeechAdapter(use_multiprocess=use_multiprocess)

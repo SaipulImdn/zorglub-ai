@@ -12,12 +12,10 @@ from shared.config import Config
 from .base_factory import ServiceFactory, SingletonMixin, resource_manager
 
 class ConnectionPool:
-    """HTTP Connection pool untuk Ollama API calls"""
     
     def __init__(self, pool_size: int = 10, max_retries: int = 3):
         self.session = requests.Session()
         
-        # Setup retry strategy
         retry_strategy = Retry(
             total=max_retries,
             status_forcelist=[429, 500, 502, 503, 504],
@@ -25,7 +23,6 @@ class ConnectionPool:
             backoff_factor=1
         )
         
-        # Setup adapter dengan connection pooling
         adapter = HTTPAdapter(
             pool_connections=pool_size,
             pool_maxsize=pool_size,
@@ -35,36 +32,29 @@ class ConnectionPool:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         
-        # Set timeout defaults
-        self.session.timeout = (5, 30)  # (connect, read)
+        self.session.timeout = (5, 30)
         
-        # Register for cleanup
         resource_manager.register_resource(self.session, self.cleanup)
     
     def post(self, url: str, **kwargs) -> requests.Response:
-        """Make POST request dengan connection pooling"""
         return self.session.post(url, **kwargs)
     
     def get(self, url: str, **kwargs) -> requests.Response:
-        """Make GET request dengan connection pooling"""
         return self.session.get(url, **kwargs)
     
     def cleanup(self):
-        """Cleanup connection pool"""
         if hasattr(self, 'session'):
             self.session.close()
 
 class ResponseCache:
-    """Cache untuk AI responses dengan TTL"""
     
-    def __init__(self, max_size: int = 100, ttl: int = 300):  # 5 menit TTL
+    def __init__(self, max_size: int = 100, ttl: int = 300):
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._max_size = max_size
         self._ttl = ttl
         self._lock = threading.RLock()
     
     def get(self, key: str) -> Optional[str]:
-        """Get cached response"""
         with self._lock:
             if key in self._cache:
                 entry = self._cache[key]
@@ -75,9 +65,7 @@ class ResponseCache:
             return None
     
     def set(self, key: str, response: str):
-        """Set cached response"""
         with self._lock:
-            # Remove oldest entries if cache is full
             if len(self._cache) >= self._max_size:
                 oldest_key = min(self._cache.keys(), 
                                key=lambda k: self._cache[k]['timestamp'])
@@ -89,12 +77,10 @@ class ResponseCache:
             }
     
     def clear(self):
-        """Clear cache"""
         with self._lock:
             self._cache.clear()
 
 class OllamaClient:
-    """Optimized Ollama client dengan pooling dan caching"""
     
     def __init__(self):
         self.config = Config.get_ollama_settings()
@@ -107,7 +93,6 @@ class OllamaClient:
         }
     
     def _generate_cache_key(self, messages: List[Dict], options: Dict = None) -> str:
-        """Generate cache key untuk request"""
         key_data = {
             'messages': messages,
             'model': self.config['model'],
@@ -116,19 +101,15 @@ class OllamaClient:
         return str(hash(json.dumps(key_data, sort_keys=True)))
     
     def ask(self, prompt: str, use_cache: bool = True) -> str:
-        """Ask AI dengan caching support"""
         messages = [{"role": "user", "content": prompt}]
         return self._make_request(messages, use_cache=use_cache)
     
     def ask_with_context(self, messages: List[Dict], options: Dict = None, use_cache: bool = True) -> str:
-        """Ask AI dengan conversation context"""
         return self._make_request(messages, options=options, use_cache=use_cache)
     
     def _make_request(self, messages: List[Dict], options: Dict = None, use_cache: bool = True) -> str:
-        """Make request ke Ollama API"""
         self._stats['requests'] += 1
         
-        # Check cache first
         if use_cache:
             cache_key = self._generate_cache_key(messages, options)
             cached_response = self.cache.get(cache_key)
@@ -158,10 +139,8 @@ class OllamaClient:
             
             data = response.json()
             
-            # Extract response content
             content = self._extract_content(data)
             
-            # Cache the response
             if use_cache:
                 self.cache.set(cache_key, content)
             
@@ -178,7 +157,6 @@ class OllamaClient:
             return f"Error: {str(e)}"
     
     def _extract_content(self, data: Dict) -> str:
-        """Extract content dari Ollama response"""
         if 'message' in data and 'content' in data['message']:
             return data['message']['content']
         elif 'response' in data:
@@ -187,7 +165,6 @@ class OllamaClient:
             return f"Unexpected response format: {data}"
     
     def get_stats(self) -> Dict:
-        """Get client statistics"""
         cache_hit_rate = (self._stats['cache_hits'] / max(self._stats['requests'], 1)) * 100
         return {
             **self._stats,
@@ -195,18 +172,14 @@ class OllamaClient:
         }
     
     def clear_cache(self):
-        """Clear response cache"""
         self.cache.clear()
 
 class AIServiceFactory(ServiceFactory[OllamaClient], SingletonMixin):
-    """Factory untuk AI service creation"""
     
     def create(self, **kwargs) -> OllamaClient:
-        """Create optimized Ollama client"""
         return OllamaClient()
     
     def validate_dependencies(self) -> bool:
-        """Validate Ollama dependencies"""
         try:
             pool = ConnectionPool()
             
@@ -221,12 +194,10 @@ class AIServiceFactory(ServiceFactory[OllamaClient], SingletonMixin):
         except Exception:
             return False
 
-# Global instances
 _ai_client: Optional[OllamaClient] = None
 _factory: Optional[AIServiceFactory] = None
 
 def get_ai_client() -> OllamaClient:
-    """Get global AI client instance"""
     global _ai_client, _factory
     
     if _ai_client is None:

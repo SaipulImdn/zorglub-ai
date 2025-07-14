@@ -20,14 +20,11 @@ class ModelCache:
             if model_name in self._models:
                 return self._models[model_name]
             
-            # Prevent multiple threads loading same model
             if model_name in self._model_loading:
-                # Wait for other thread to finish loading
                 while model_name in self._model_loading:
                     time.sleep(0.1)
                 return self._models.get(model_name)
             
-            # Mark as loading
             self._model_loading.add(model_name)
         
         try:
@@ -38,7 +35,6 @@ class ModelCache:
                 self._models[model_name] = model
                 self._model_loading.discard(model_name)
             
-            # Register for cleanup
             resource_manager.register_resource(model)
             
             return model
@@ -69,19 +65,16 @@ class AudioProcessor:
         print(f"Recording audio for {duration} seconds...")
         
         try:
-            # Record with optimized buffer size
             audio = sd.rec(
                 int(duration * fs), 
                 samplerate=fs, 
                 channels=1,
                 blocking=True,
-                device=None  # Use default device
+                device=None
             )
             
-            # Create temporary file
             temp_file = self._create_temp_file()
             
-            # Save with proper format
             wav.write(temp_file, fs, (audio * 32767).astype(np.int16))
             
             print("Recording completed")
@@ -122,7 +115,6 @@ class WhisperSTT:
         self.model_cache = ModelCache()
         self.audio_processor = AudioProcessor()
         
-        # Register cleanup
         resource_manager.register_resource(
             self.audio_processor, 
             self.audio_processor.cleanup_temp_files
@@ -130,26 +122,22 @@ class WhisperSTT:
     
     def transcribe_audio(self, audio_file: Optional[str] = None) -> Optional[str]:
         try:
-            # Use provided file atau record new
             if audio_file is None:
                 audio_file = self.audio_processor.record_audio()
                 if audio_file is None:
                     return None
             
-            # Get cached model
             model = self.model_cache.get_model(self.config['whisper_model'])
             
             print("Transcribing audio...")
             
-            # Transcribe dengan optimized options
             result = model.transcribe(
                 audio_file,
                 language=self.config['stt_language'],
-                fp16=False,  # Better compatibility
+                fp16=False,
                 verbose=False
             )
             
-            # Cleanup if we created the file
             if audio_file and audio_file in self.audio_processor._temp_files:
                 try:
                     os.remove(audio_file)
@@ -177,7 +165,6 @@ class SpeechServiceFactory(ServiceFactory[WhisperSTT], SingletonMixin):
             import scipy
             import numpy
             
-            # Check audio devices
             devices = sd.query_devices()
             if len(devices) == 0:
                 return False
@@ -189,7 +176,6 @@ class SpeechServiceFactory(ServiceFactory[WhisperSTT], SingletonMixin):
         except Exception:
             return False
 
-# Global instances
 _stt_service: Optional[WhisperSTT] = None
 _factory: Optional[SpeechServiceFactory] = None
 

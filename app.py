@@ -15,7 +15,6 @@ from infrastructure import (
 from shared.config import Config
 
 def show_banner():
-    """Show welcome banner"""
     print("=" * 70)
     print("ZORGLUB AI - Advanced Voice Assistant")
     print("=" * 70)
@@ -47,7 +46,6 @@ def show_banner():
     logger.info("=" * 70)
 
 def show_help():
-    """Show available command line options"""
     print("\n USAGE:")
     print("  python app.py                - Interactive mode")
     print("  python app.py --single   -s  - Single voice interaction")
@@ -81,7 +79,6 @@ def show_help():
     logger.info("  python app.py --check              # System health check")
 
 def interactive_mode(voice_assistant: VoiceAssistant):
-    """Interactive mode dengan menu"""
     print("\n INTERACTIVE MODE")
     print("Choose your interaction style:")
     print("1. Single Voice (one-shot)")
@@ -129,28 +126,18 @@ def interactive_mode(voice_assistant: VoiceAssistant):
 def main():
     try:
         show_banner()
-        
-        # Parse command line arguments first
         args = parse_arguments()
-        
         if args.get('help'):
             show_help()
             return
-        
-        # Auto-start Ollama
         print("\n Starting Ollama service...")
         if not Config.start_ollama_model():
             print("Ollama may not be ready, but continuing...")
-        
-        # Initialize services dengan pilihan mode
         use_multiprocess = args.get('multiprocess', True)
         if not quick_start(use_multiprocess=use_multiprocess):
             print("\n Failed to start services")
             return
-        
-        # Handle different modes
         handle_user_mode(args, use_multiprocess)
-                
     except KeyboardInterrupt:
         print("\n rogram stopped by user")
     except Exception as e:
@@ -159,21 +146,17 @@ def main():
     logger = logging.getLogger("main")
     try:
         show_banner()
-        # Parse command line arguments first
         args = parse_arguments()
         if args.get('help'):
             show_help()
             return
-        # Auto-start Ollama
         logger.info("\n Starting Ollama service...")
         if not Config.start_ollama_model():
             logger.warning("Ollama may not be ready, but continuing...")
-        # Initialize services dengan pilihan mode
         use_multiprocess = args.get('multiprocess', True)
         if not quick_start(use_multiprocess=use_multiprocess):
             logger.error("\n Failed to start services")
             return
-        # Handle different modes
         handle_user_mode(args, use_multiprocess)
     except KeyboardInterrupt:
         logger.info("\n Program stopped by user")
@@ -182,8 +165,7 @@ def main():
         sys.exit(1)
 
 def parse_arguments():
-    args = {'multiprocess': True}  # Default to multiprocessing
-    
+    args = {'multiprocess': True}
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             arg_lower = arg.lower()
@@ -205,13 +187,10 @@ def parse_arguments():
                 args['mode'] = 'benchmark'
             elif arg_lower in ['--status', '-st']:
                 args['mode'] = 'status'
-    
     return args
 
 def handle_user_mode(args, use_multiprocess):
-    """Handle different user modes"""
     mode = args.get('mode')
-    
     if mode == 'check':
         print_system_status(use_multiprocess)
     elif mode == 'benchmark':
@@ -219,13 +198,10 @@ def handle_user_mode(args, use_multiprocess):
     elif mode == 'status':
         print_system_status(use_multiprocess)
     elif mode in ['single', 'text', 'voice', 'textonly']:
-        # Create voice assistant dengan enhanced services
         ai_service = get_enhanced_ai_service(use_multiprocess)
         stt_service = get_enhanced_stt_service(use_multiprocess)
         tts_service = get_enhanced_tts_service(use_multiprocess)
-        
         voice_assistant = VoiceAssistant(ai_service, stt_service, tts_service)
-        
         if mode == 'single':
             voice_assistant.single_voice_interaction()
         elif mode == 'text':
@@ -235,13 +211,10 @@ def handle_user_mode(args, use_multiprocess):
         elif mode == 'textonly':
             voice_assistant.text_to_text_mode()
     else:
-        # Interactive mode
         print_system_status(use_multiprocess)
-        
         ai_service = get_enhanced_ai_service(use_multiprocess)
         stt_service = get_enhanced_stt_service(use_multiprocess)
         tts_service = get_enhanced_tts_service(use_multiprocess)
-        
         voice_assistant = VoiceAssistant(ai_service, stt_service, tts_service)
         interactive_mode(voice_assistant)
 

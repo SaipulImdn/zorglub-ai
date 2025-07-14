@@ -10,5 +10,4 @@ class SpeechInput(SpeechInputInterface):
         from infrastructure.stt_whisper import transcribe_audio
         return transcribe_audio()
 
-# Alias untuk backward compatibility
 SpeechToText = SpeechInput

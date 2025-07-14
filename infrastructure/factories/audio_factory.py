@@ -37,7 +37,6 @@ class AudioQueue:
     
     async def _play_audio_file(self, audio_file: str):
         try:
-            # Use mpv untuk audio playback
             process = await asyncio.create_subprocess_exec(
                 'mpv', '--no-video', '--really-quiet', audio_file,
                 stdout=asyncio.subprocess.DEVNULL,
@@ -47,7 +46,6 @@ class AudioQueue:
         except Exception as e:
             print(f"Error playing audio: {e}")
         finally:
-            # Cleanup file
             try:
                 if os.path.exists(audio_file):
                     os.remove(audio_file)
@@ -60,12 +58,8 @@ class TextSegmenter:
         if len(text) <= max_length:
             return [text]
         
-        # Clean text
         text = re.sub(r'\s+', ' ', text.strip())
-        
-        # Split by sentences first
         sentences = re.split(r'[.!?]+', text)
-        
         return TextSegmenter._process_sentences(sentences, max_length)
     
     @staticmethod
@@ -79,11 +73,9 @@ class TextSegmenter:
                 continue
             
             if len(sentence) > max_length:
-                # Handle long sentences
                 clause_segments = TextSegmenter._split_long_sentence(sentence, max_length)
                 segments.extend(clause_segments)
             else:
-                # Handle normal sentences
                 if len(current_segment + sentence) <= max_length:
                     current_segment += sentence + ". "
                 else:
@@ -91,7 +83,6 @@ class TextSegmenter:
                         segments.append(current_segment.rstrip(". "))
                     current_segment = sentence + ". "
         
-        # Add remaining segment
         if current_segment:
             segments.append(current_segment.rstrip(". "))
         
@@ -128,21 +119,16 @@ class TTSEngineManager:
     
     def synthesize_text(self, text: str, engine: str = None) -> Optional[str]:
         engine = engine or self.config.get('tts_engine', 'gtts')
-        
-        # Try primary engine
         try:
             return self._synthesize_with_engine(text, engine)
         except Exception as e:
             print(f"Primary TTS engine {engine} failed: {e}")
-            
-            # Try fallback engine
             fallback = self.config.get('fallback_engine', 'gtts')
             if fallback != engine:
                 try:
                     return self._synthesize_with_engine(text, fallback)
                 except Exception as e:
                     print(f"Fallback TTS engine {fallback} failed: {e}")
-        
         return None
     
     def _synthesize_with_engine(self, text: str, engine: str) -> str:
@@ -155,12 +141,9 @@ class TTSEngineManager:
     
     def _synthesize_gtts(self, text: str) -> str:
         from gtts import gTTS
-        
         tts = gTTS(text, lang=self.config['tts_language'])
-        
         temp_file = self._create_temp_file('.mp3')
         tts.save(temp_file)
-        
         return temp_file
     
     def _synthesize_edge(self, text: str) -> str:
@@ -195,13 +178,10 @@ class TTSEngineManager:
             suffix=suffix,
             dir=tempfile.gettempdir()
         )
-        
         temp_path = temp_file.name
         temp_file.close()
-        
         with self._lock:
             self._temp_files.append(temp_path)
-        
         return temp_path
     
     def cleanup_temp_files(self):
@@ -221,8 +201,6 @@ class OptimizedTTS:
         self.audio_queue = AudioQueue()
         self.text_segmenter = TextSegmenter()
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-        
-        # Register cleanup
         resource_manager.register_resource(
             self.engine_manager,
             self.engine_manager.cleanup_temp_files
@@ -231,24 +209,18 @@ class OptimizedTTS:
     def speak(self, text: str, engine: str = None, async_mode: bool = False) -> bool:
         if not text or not text.strip():
             return False
-        
         try:
-            # Clean dan segment text
             segments = self.text_segmenter.split_text_intelligently(
                 text.strip(),
                 self.config.get('max_segment_length', 200)
             )
-            
             if len(segments) == 1:
-                # Single segment
                 return self._speak_single_segment(segments[0], engine)
             else:
-                # Multiple segments
                 if async_mode:
                     return self._speak_segments_async(segments, engine)
                 else:
                     return self._speak_segments_sequential(segments, engine)
-        
         except Exception as e:
             print(f"Error in TTS: {e}")
             return False
@@ -261,64 +233,46 @@ class OptimizedTTS:
                 return True
         except Exception as e:
             print(f"Error speaking segment: {e}")
-        
         return False
     
     def _speak_segments_sequential(self, segments: List[str], engine: str = None) -> bool:
         success_count = 0
-        
         for i, segment in enumerate(segments):
             try:
                 print(f"Speaking segment {i+1}/{len(segments)}")
-                
                 audio_file = self.engine_manager.synthesize_text(segment, engine)
                 if audio_file:
                     self._play_audio_sync(audio_file)
                     success_count += 1
-                
-                # Natural pause between segments
                 pause = self.config.get('pause_between_segments', 0.3)
                 if pause > 0 and i < len(segments) - 1:
                     time.sleep(pause)
-                    
             except Exception as e:
                 print(f"Error speaking segment {i+1}: {e}")
-        
         return success_count > 0
     
     def _speak_segments_async(self, segments: List[str], engine: str = None) -> bool:
         try:
-            # Create event loop untuk async processing
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
-            # Process segments in parallel
             tasks = [
                 self._synthesize_segment_async(segment, engine) 
                 for segment in segments
             ]
-            
             audio_files = loop.run_until_complete(asyncio.gather(*tasks))
-            
-            # Play audio files sequentially
             for audio_file in audio_files:
                 if audio_file:
                     loop.run_until_complete(self.audio_queue.add_audio(audio_file))
-            
             loop.run_until_complete(self.audio_queue.play_queue())
             loop.close()
-            
             return True
-            
         except Exception as e:
             print(f"Error in async speech: {e}")
             return False
     
     async def _synthesize_segment_async(self, text: str, engine: str = None) -> Optional[str]:
         loop = asyncio.get_event_loop()
-        
         try:
-            # Run synthesis in thread pool
             return await loop.run_in_executor(
                 self._executor,
                 self.engine_manager.synthesize_text,
@@ -336,13 +290,11 @@ class OptimizedTTS:
                 check=False,
                 capture_output=True
             )
-            
         except FileNotFoundError:
             print("mpv not found. Install with: sudo apt install mpv")
         except Exception as e:
             print(f"Error playing audio: {e}")
         finally:
-            # Cleanup
             try:
                 if os.path.exists(audio_file):
                     os.remove(audio_file)
@@ -355,35 +307,28 @@ class AudioServiceFactory(ServiceFactory[OptimizedTTS], SingletonMixin):
     
     def validate_dependencies(self) -> bool:
         try:
-            # Check mpv
             subprocess.run(
                 ['mpv', '--version'],
                 capture_output=True,
                 check=True
             )
-            
-            # Check TTS dependencies
             try:
                 import gtts
                 return True
             except ImportError:
                 return False
-                
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
         except Exception:
             return False
 
-# Global instances
 _tts_service: Optional[OptimizedTTS] = None
 _factory: Optional[AudioServiceFactory] = None
 
 def get_tts_service() -> OptimizedTTS:
     global _tts_service, _factory
-    
     if _tts_service is None:
         if _factory is None:
             _factory = AudioServiceFactory()
         _tts_service = _factory.create()
-    
     return _tts_service

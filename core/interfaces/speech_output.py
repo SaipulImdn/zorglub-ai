@@ -10,5 +10,4 @@ class SpeechOutput(SpeechOutputInterface):
         from infrastructure.tts_human import speak_text
         speak_text(text)
 
-# Alias untuk backward compatibility
 TextToSpeech = SpeechOutput

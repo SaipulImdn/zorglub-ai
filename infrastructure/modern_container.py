@@ -16,8 +16,6 @@ class ServiceRegistry:
         self._factories: Dict[str, Callable] = {}
         self._lock = threading.RLock()
         self._health_status: Dict[str, bool] = {}
-        
-        # Register built-in factories
         self._register_builtin_factories()
     
     def _register_builtin_factories(self):
@@ -36,13 +34,9 @@ class ServiceRegistry:
             if service_name not in self._services:
                 if service_name not in self._factories:
                     raise ValueError(f"Unknown service: {service_name}")
-                
                 factory = self._factories[service_name]
                 self._services[service_name] = factory(**kwargs)
-                
-                # Register for cleanup
                 resource_manager.register_resource(self._services[service_name])
-            
             return self._services[service_name]
     
     def health_check(self, service_name: str) -> bool:
@@ -83,48 +77,34 @@ class OptimizedContainer:
         with self._lock:
             if self._is_initialized:
                 return True
-            
             print("Initializing Zorglub AI services...")
-            
-            # Validate dependencies
             validation_results = DependencyValidator.validate_all()
             missing_deps = [k for k, v in validation_results.items() if not v]
-            
             if missing_deps:
                 print(f"Missing dependencies: {missing_deps}")
                 print("Some features may not work properly.")
                 return False
-            
-            # Run startup tasks
             for task in self._startup_tasks:
                 try:
                     task()
                 except Exception as e:
                     print(f"Startup task failed: {e}")
-            
             self._is_initialized = True
             print("All services initialized successfully!")
             return True
     
     def shutdown(self):
-        """Shutdown container dan cleanup resources"""
         with self._lock:
             if not self._is_initialized:
                 return
-            
             print("Shutting down services...")
-            
-            # Run shutdown tasks
             for task in self._shutdown_tasks:
                 try:
                     task()
                 except Exception as e:
                     print(f"Shutdown task failed: {e}")
-            
-            # Cleanup resources
             resource_manager.cleanup_all()
             self.registry.clear_services()
-            
             self._is_initialized = False
             print("Services shutdown complete.")
     
@@ -144,31 +124,23 @@ class OptimizedContainer:
         finally:
             self.shutdown()
     
-    # Service accessors
     def get_ai_service(self):
-        """Get AI service instance"""
         return self.registry.get_service('ai_service')
     
     def get_speech_input(self):
-        """Get speech input service"""
         return self.registry.get_service('stt_service')
     
     def get_speech_output(self):
-        """Get speech output service"""
         return self.registry.get_service('tts_service')
     
     def get_voice_assistant(self):
-        """Get voice assistant dengan auto-wiring"""
         from core.use_cases.voice_assistant import VoiceAssistant
         from core.interfaces.ai_service import AIService
         from core.interfaces.speech_input import SpeechToText
         from core.interfaces.speech_output import TextToSpeech
-        
-        # Create adapter instances
         ai_service = AIService()
         speech_input = SpeechToText()
         speech_output = TextToSpeech()
-        
         return VoiceAssistant(
             ai_service=ai_service,
             speech_input=speech_input,
@@ -176,38 +148,30 @@ class OptimizedContainer:
         )
     
     def get_health_status(self) -> Dict[str, Any]:
-        """Get comprehensive health status"""
         return {
             'initialized': self._is_initialized,
             'services': self.registry.get_all_health_status(),
             'timestamp': time.time()
         }
 
-# Global container instance
 _container: Optional[OptimizedContainer] = None
 
 def get_container() -> OptimizedContainer:
-    """Get global container instance"""
     global _container
-    
     if _container is None:
         _container = OptimizedContainer()
-    
     return _container
 
 def initialize_services() -> bool:
-    """Initialize all services"""
     container = get_container()
     return container.initialize()
 
 def shutdown_services():
-    """Shutdown all services"""
     container = get_container()
     container.shutdown()
 
 @contextmanager
 def managed_services():
-    """Context manager for service lifecycle"""
     container = get_container()
     with container.managed_lifecycle():
         yield container
