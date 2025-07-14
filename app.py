@@ -1,11 +1,6 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 #!/usr/bin/env python3
-"""
-Zorglub AI - Main Application Entry Point
-Modern Architecture dengan Multiprocessing Support
-"""
-
 import sys
 import os
 from core.use_cases.voice_assistant import VoiceAssistant
