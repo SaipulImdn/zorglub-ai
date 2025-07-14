@@ -1,8 +1,3 @@
-"""
-Voice Assistant Use Case
-Orchestrates voice interactions with conversation context
-"""
-
 from core.interfaces.ai_service import AIService
 from core.interfaces.speech_input import SpeechToText
 from core.interfaces.speech_output import TextToSpeech
@@ -13,14 +8,12 @@ class VoiceAssistant:
         self.ai_service = ai_service
         self.speech_input = speech_input
         self.speech_output = speech_output
-        self.conversation_manager = ConversationManager(max_history=15)  # Keep longer history
+        self.conversation_manager = ConversationManager(max_history=15) 
 
     def single_voice_interaction(self):
-        """Single voice recording and response"""
         print("\n Single Voice Interaction")
         print("-" * 30)
-        
-        # Get voice input
+
         user_input = self.speech_input.listen()
         if not user_input:
             print("No input detected")
@@ -28,15 +21,12 @@ class VoiceAssistant:
         
         print(f"You: {user_input}")
         
-        # Get AI response with conversation context
         ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
         print(f"AI: {ai_response}")
         
-        # Speak response
         self.speech_output.speak(ai_response)
 
     def text_chat_mode(self):
-        """Text input chat mode with conversation context"""
         print("\n Text Chat Mode")
         print("-" * 20)
         print("Type your questions (or /quit to exit)")
@@ -60,11 +50,8 @@ class VoiceAssistant:
                 elif not user_input:
                     continue
                 
-                # Get AI response with conversation context
                 ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
                 print(f"AI: {ai_response}")
-                
-                # Speak response
                 self.speech_output.speak(ai_response)
                 
             except KeyboardInterrupt:
@@ -72,7 +59,6 @@ class VoiceAssistant:
                 break
 
     def voice_chat_mode(self):
-        """Continuous voice chat mode with conversation context"""
         print("\n Voice Chat Mode")
         print("-" * 20)
         print("Say 'quit' or 'stop' to exit, or press Ctrl+C")
@@ -88,17 +74,14 @@ class VoiceAssistant:
                     continue
                 
                 print(f"You: {user_input}")
-                
-                # Check exit commands
+            
                 if any(word in user_input.lower() for word in ['quit', 'exit', 'stop', 'berhenti']):
                     print("Stopping voice chat...")
                     break
                 
-                # Get AI response with conversation context
                 ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
                 print(f"AI: {ai_response}")
                 
-                # Speak response
                 self.speech_output.speak(ai_response)
                 
             except KeyboardInterrupt:
@@ -106,7 +89,6 @@ class VoiceAssistant:
                 break
 
     def text_to_text_mode(self):
-        """Text to text chat mode - no voice output, text only"""
         print("\n Text to Text Mode")
         print("-" * 30)
         print("Type your questions (or /quit to exit)")
@@ -131,18 +113,14 @@ class VoiceAssistant:
                 elif not user_input:
                     continue
                 
-                # Get AI response with conversation context
                 ai_response = self.ai_service.ask_with_context(user_input, self.conversation_manager)
                 print(f"AI: {ai_response}")
-                
-                # NO voice output - text only mode
-                
+
             except KeyboardInterrupt:
                 print("\n Exiting text to text mode...")
                 break
 
     def _show_help(self):
-        """Show help commands"""
         print("\n Commands:")
         print("  /help   - Show this help")
         print("  /quit   - Exit current mode")
@@ -155,7 +133,6 @@ class VoiceAssistant:
         print("  Natural conversation flow")
     
     def _show_conversation_status(self):
-        """Show current conversation status"""
         summary = self.conversation_manager.get_conversation_summary()
         print(f"\n Conversation Status:")
         print(f"  Messages: {summary['total_messages']}")
@@ -167,9 +144,7 @@ class VoiceAssistant:
                 print(f"    {msg['role']}: {msg['content']}")
     
     def save_conversation(self, filename: str = None):
-        """Save current conversation"""
         self.conversation_manager.save_conversation(filename)
     
     def load_conversation(self, filename: str):
-        """Load previous conversation"""
         self.conversation_manager.load_conversation(filename)

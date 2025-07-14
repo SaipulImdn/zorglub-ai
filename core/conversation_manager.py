@@ -1,7 +1,3 @@
-"""
-Conversation Manager for managing context and conversation history
-"""
-
 import json
 import time
 from typing import List, Dict, Optional
@@ -10,7 +6,7 @@ from datetime import datetime
 
 @dataclass
 class Message:
-    role: str  # 'user' atau 'assistant'
+    role: str
     content: str
     timestamp: datetime
     context_tags: List[str] = None
@@ -27,7 +23,6 @@ class ConversationManager:
         self.topics_discussed = set()
         
     def add_message(self, role: str, content: str, context_tags: List[str] = None):
-        """Tambah pesan ke history conversation"""
         message = Message(
             role=role,
             content=content,
@@ -37,31 +32,20 @@ class ConversationManager:
         
         self.conversation_history.append(message)
         
-        # Update topics yang dibahas
         if context_tags:
             self.topics_discussed.update(context_tags)
-        
-        # Trim history jika terlalu panjang
         if len(self.conversation_history) > self.max_history:
             self.conversation_history = self.conversation_history[-self.max_history:]
     
     def get_context_prompt(self, new_user_input: str) -> str:
-        """Generate prompt yang include context dari conversation sebelumnya"""
-        
-        # Detect context dari input user
         context_tags = self._detect_context(new_user_input)
-        
-        # Build conversation context
         context_messages = []
         
-        # Include relevant previous messages
-        for msg in self.conversation_history[-5:]:  # Last 5 messages
+        for msg in self.conversation_history[-5:]:
             context_messages.append(f"{msg.role.title()}: {msg.content}")
         
-        # Detect if this is a follow-up question
         is_followup = self._is_followup_question(new_user_input)
         
-        # Build enhanced prompt
         prompt_parts = []
         
         if context_messages:
@@ -69,7 +53,6 @@ class ConversationManager:
             prompt_parts.extend(context_messages)
             prompt_parts.append("=== END HISTORY ===\n")
         
-        # Add context instructions
         if is_followup:
             prompt_parts.append("INSTRUCTION: Ini adalah pertanyaan lanjutan. Jawab berdasarkan context percakapan sebelumnya.")
         
@@ -77,19 +60,15 @@ class ConversationManager:
             topics = ", ".join(list(self.topics_discussed)[:3])
             prompt_parts.append(f"TOPICS DISCUSSED: {topics}")
         
-        # Add current user input
         prompt_parts.append(f"USER: {new_user_input}")
         
-        # Add response instructions
         prompt_parts.append("\nINSTRUCTION: Berikan jawaban yang natural dan mengacu pada percakapan sebelumnya jika relevan. Gunakan bahasa Indonesia yang casual dan friendly.")
         
         return "\n".join(prompt_parts)
     
     def _detect_context(self, text: str) -> List[str]:
-        """Deteksi context tags dari input user"""
         text_lower = text.lower()
         
-        # Context detection rules
         context_map = {
             'programming': ['code', 'programming', 'python', 'javascript', 'coding', 'bug', 'error'],
             'general': ['halo', 'hai', 'hello', 'hi', 'apa kabar', 'gimana'],
@@ -107,7 +86,6 @@ class ConversationManager:
         return detected_tags
     
     def _is_followup_question(self, text: str) -> bool:
-        """Deteksi apakah ini pertanyaan lanjutan"""
         followup_indicators = [
             'itu', 'tadi', 'sebelumnya', 'yang', 'lanjutannya', 
             'terus', 'lalu', 'kemudian', 'selanjutnya', 'bagaimana dengan',
@@ -121,7 +99,6 @@ class ConversationManager:
         return has_followup and has_recent_history
     
     def get_conversation_summary(self) -> Dict:
-        """Get summary dari conversation untuk debugging"""
         return {
             'total_messages': len(self.conversation_history),
             'topics_discussed': list(self.topics_discussed),
@@ -133,14 +110,12 @@ class ConversationManager:
         }
     
     def clear_conversation(self):
-        """Reset conversation history"""
         self.conversation_history.clear()
         self.topics_discussed.clear()
         self.current_context.clear()
         print("Conversation history cleared")
     
     def save_conversation(self, filename: str = None):
-        """Save conversation to file"""
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"conversation_{timestamp}.json"
@@ -164,17 +139,16 @@ class ConversationManager:
         print(f"Conversation saved to {filename}")
     
     def load_conversation(self, filename: str):
-        """Load conversation from file"""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             self.conversation_history = [
                 Message(
-                    role=msg['role'],
-                    content=msg['content'],
-                    timestamp=datetime.fromisoformat(msg['timestamp']),
-                    context_tags=msg.get('context_tags', [])
+                    role=msg.role,
+                    content=msg.content,
+                    timestamp=datetime.fromisoformat(msg.timestamp),
+                    context_tags=msg.context_tags or []
                 )
                 for msg in data['conversation_history']
             ]
@@ -184,3 +158,11 @@ class ConversationManager:
             
         except Exception as e:
             print(f"Error loading conversation: {e}")
+    
+    def get_conversation_history(self) -> List[Message]:
+        """Get the complete conversation history"""
+        return self.conversation_history.copy()
+    
+    def get_recent_history(self, count: int = 5) -> List[Message]:
+        """Get recent conversation history"""
+        return self.conversation_history[-count:] if count > 0 else []

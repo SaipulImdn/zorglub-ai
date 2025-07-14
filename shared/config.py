@@ -1,8 +1,3 @@
-"""
-Configuration settings for Zorglub AI
-Centralized configuration management
-"""
-
 import os
 import subprocess
 import time
@@ -14,18 +9,18 @@ class Config:
     OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))
     
     # Speech Configuration
-    TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "id")  # Bahasa Indonesia
-    STT_LANGUAGE = os.getenv("STT_LANGUAGE", "id")  # Bahasa Indonesia
+    TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "id")  # Indonesian
+    STT_LANGUAGE = os.getenv("STT_LANGUAGE", "id")  # Indonesian
     
     # Enhanced TTS Configuration
     TTS_ENGINE = os.getenv("TTS_ENGINE", "edge")  # edge, piper, festival, gtts
-    TTS_VOICE = os.getenv("TTS_VOICE", "id-ID-ArdiNeural")  # Voice untuk Edge TTS
+    TTS_VOICE = os.getenv("TTS_VOICE", "id-ID-ArdiNeural")  # Voice for Edge TTS
     TTS_RATE = os.getenv("TTS_RATE", "-10%")  # Speaking rate (slower for clarity)
     TTS_VOLUME = os.getenv("TTS_VOLUME", "+10%")  # Volume (slightly louder)
     TTS_PITCH = os.getenv("TTS_PITCH", "-2Hz")  # Pitch (slightly lower for warmth)
     
     # Audio Configuration
-    RECORDING_DURATION = int(os.getenv("RECORDING_DURATION", "5"))  # detik
+    RECORDING_DURATION = int(os.getenv("RECORDING_DURATION", "5"))  # seconds
     SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
     
     # Whisper Configuration
@@ -53,32 +48,32 @@ class Config:
     
     @classmethod
     def get_speech_settings(cls):
-        """Get speech processing settings dengan natural human-like voice"""
+        """Get speech processing settings with natural human-like voice"""
         return {
             'tts_language': cls.TTS_LANGUAGE,
             'stt_language': cls.STT_LANGUAGE,
             'whisper_model': cls.WHISPER_MODEL,
             'tts_engine': cls.TTS_ENGINE,
             'tts_voice': cls.TTS_VOICE,
-            'tts_rate': '+5%',  # Slightly faster untuk natural conversation
+            'tts_rate': '+5%',  # Slightly faster for natural conversation
             'tts_volume': '+15%',  # Comfortable volume
             'tts_pitch': '+0Hz',  # Natural pitch
             'edge_voice': cls.TTS_VOICE,
             'piper_model': 'id_ID-fajri-medium',
             
             # NATURAL HUMAN-LIKE SETTINGS
-            'max_segment_length': 200,  # Shorter segments untuk natural pauses
+            'max_segment_length': 200,  # Shorter segments for natural pauses
             'max_workers': 4,  # Balanced processing
             'enable_parallel_processing': True,
             'enable_natural_pauses': True,  # Natural breathing pauses
             'pause_between_segments': 0.3,  # Natural pause 300ms
-            'enable_audio_streaming': False,  # Disable streaming untuk stability
+            'enable_audio_streaming': False,  # Disable streaming for stability
             'fast_cleanup': True,
             
             # AUDIO PROCESSING
-            'audio_buffer_size': 0.5,  # Reasonable buffer untuk stability
+            'audio_buffer_size': 0.5,  # Reasonable buffer for stability
             'audio_normalization': True,
-            'audio_timeout': 30,  # Longer timeout untuk avoid cutting off
+            'audio_timeout': 30,  # Longer timeout to avoid cutting off
             'use_fallback_player': True,  # Use aplay as fallback
             
             # NATURAL SPEECH SETTINGS
@@ -91,18 +86,18 @@ class Config:
             'fallback_engine': 'gtts',
             'fallback_on_error': True,
             'max_retries': 2,
-            'timeout_per_segment': 25,  # Longer timeout untuk natural speech
+            'timeout_per_segment': 25,  # Longer timeout for natural speech
             
             # QUALITY SETTINGS
             'quality_mode': 'natural',  # 'fast', 'balanced', 'natural'
             'enable_pronunciation_fix': True,
             'enable_text_preprocessing': True,
-            'optimize_for_conversation': True,  # Optimize untuk natural conversation
+            'optimize_for_conversation': True,  # Optimize for natural conversation
         }
     
     @classmethod
     def start_ollama_model(cls):
-        """Start ollama dengan model yang dikonfigurasi"""
+        """Start ollama with configured model"""
         model = cls.OLLAMA_MODEL
         print(f"Starting Ollama with model: {model}")
         
@@ -114,27 +109,27 @@ class Config:
             if result.returncode == 0:
                 # Check if model is already loaded
                 if model in result.stdout:
-                    print(f"Model {model} sudah berjalan")
+                    print(f"Model {model} is already running")
                     return True
                 else:
                     print(f"Loading model {model}...")
             else:
                 print("Starting Ollama service...")
             
-            # Run ollama dengan model
+            # Run ollama with model
             cmd = ['ollama', 'run', model]
             process = subprocess.Popen(cmd, 
                                      stdout=subprocess.PIPE, 
                                      stderr=subprocess.PIPE,
                                      text=True)
             
-            # Wait a bit untuk model loading
+            # Wait for model loading
             print("Waiting for model to load...")
             time.sleep(3)
             
             # Check if process is still running (good sign)
             if process.poll() is None:
-                print(f"Model {model} berhasil dimuat!")
+                print(f"Model {model} loaded successfully!")
                 return True
             else:
                 stdout, stderr = process.communicate()
@@ -145,7 +140,7 @@ class Config:
             print("Ollama startup timeout, but may still be loading...")
             return True
         except FileNotFoundError:
-            print("Ollama tidak ditemukan. Install dulu: https://ollama.ai/")
+            print("Ollama not found. Install first: https://ollama.ai/")
             return False
         except Exception as e:
             print(f"Error starting Ollama: {e}")
