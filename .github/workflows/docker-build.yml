@@ -13,6 +13,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate version.txt
+        run: |
+          REQUIRED_VERSION="version=1.0.0-release01"
+          ACTUAL_VERSION=$(cat version.txt | tr -d ' \t\n\r')
+          if [ "$ACTUAL_VERSION" != "$REQUIRED_VERSION" ]; then
+            echo "ERROR: version.txt mismatch! Expected: $REQUIRED_VERSION, Found: $ACTUAL_VERSION"
+            exit 1
+          fi
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
