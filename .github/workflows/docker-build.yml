@@ -40,4 +40,14 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
+          build-args: |
+            ZORGLUB_VERSION=${{ steps.get_version.outputs.version }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:${{ steps.get_version.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
+      - name: Get version from version.txt
+        id: get_version
+        run: |
+          VERSION=$(cat version.txt | tr -d ' \t\n\r')
+          VERSION=${VERSION#version=}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT

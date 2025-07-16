@@ -1,6 +1,10 @@
 # Dockerfile for zorglub-ai
 FROM python:3.12-slim
 
+# --- Version ARG and LABEL ---
+ARG ZORGLUB_VERSION
+LABEL zorglub.version=${ZORGLUB_VERSION}
+
 # Set workdir
 WORKDIR /app
 
