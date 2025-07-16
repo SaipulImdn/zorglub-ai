@@ -13,6 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get and validate version from version.txt
+        id: get_version
+        run: |
+          VERSION=$(cat version.txt | tr -d ' \t\n\r')
+          VERSION=${VERSION#version=}
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: version.txt is empty or invalid!"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -32,4 +43,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
+          build-args: |
+            ZORGLUB_VERSION=${{ steps.get_version.outputs.version }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:${{ steps.get_version.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest

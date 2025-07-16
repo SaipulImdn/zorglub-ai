@@ -13,6 +13,12 @@ from infrastructure import (
     get_enhanced_tts_service
 )
 from shared.config import Config
+from shared.version import get_project_version
+
+project_version = get_project_version()
+if not project_version or not project_version.startswith('1.0.0-release'):
+    print(f"[zorglub-ai] ERROR: Project version mismatch or invalid: {project_version}")
+    sys.exit(1)
 
 def show_banner():
     print("=" * 70)
