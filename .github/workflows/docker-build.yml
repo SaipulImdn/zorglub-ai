@@ -22,12 +22,8 @@ jobs:
             echo "ERROR: version.txt is empty or invalid!"
             exit 1
           fi
-          REQUIRED_VERSION="1.0.0-release01"
-          if [ "$VERSION" != "$REQUIRED_VERSION" ]; then
-            echo "ERROR: version.txt mismatch! Expected: $REQUIRED_VERSION, Found: $VERSION"
-            exit 1
-          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -52,9 +48,3 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:${{ steps.get_version.outputs.version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/zorglub-ai:latest
-      - name: Get version from version.txt
-        id: get_version
-        run: |
-          VERSION=$(cat version.txt | tr -d ' \t\n\r')
-          VERSION=${VERSION#version=}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
