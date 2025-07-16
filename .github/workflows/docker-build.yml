@@ -13,9 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate version.txt
-        run: |
-      - name: Get version from version.txt
+      - name: Get and validate version from version.txt
         id: get_version
         run: |
           VERSION=$(cat version.txt | tr -d ' \t\n\r')
@@ -24,13 +22,12 @@ jobs:
             echo "ERROR: version.txt is empty or invalid!"
             exit 1
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          REQUIRED_VERSION="version=1.0.0-release01"
-          ACTUAL_VERSION=$(cat version.txt | tr -d ' \t\n\r')
-          if [ "$ACTUAL_VERSION" != "$REQUIRED_VERSION" ]; then
-            echo "ERROR: version.txt mismatch! Expected: $REQUIRED_VERSION, Found: $ACTUAL_VERSION"
+          REQUIRED_VERSION="1.0.0-release01"
+          if [ "$VERSION" != "$REQUIRED_VERSION" ]; then
+            echo "ERROR: version.txt mismatch! Expected: $REQUIRED_VERSION, Found: $VERSION"
             exit 1
           fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
