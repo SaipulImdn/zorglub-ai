@@ -15,6 +15,16 @@ jobs:
 
       - name: Validate version.txt
         run: |
+      - name: Get version from version.txt
+        id: get_version
+        run: |
+          VERSION=$(cat version.txt | tr -d ' \t\n\r')
+          VERSION=${VERSION#version=}
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: version.txt is empty or invalid!"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           REQUIRED_VERSION="version=1.0.0-release01"
           ACTUAL_VERSION=$(cat version.txt | tr -d ' \t\n\r')
           if [ "$ACTUAL_VERSION" != "$REQUIRED_VERSION" ]; then
